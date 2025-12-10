@@ -48,7 +48,7 @@ class BonusTemplateResponse(BonusTemplateCreate):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class BonusTranslationCreate(BaseModel):
@@ -67,7 +67,7 @@ class BonusTranslationResponse(BonusTranslationCreate):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CurrencyReferenceCreate(BaseModel):
@@ -85,7 +85,7 @@ class CurrencyReferenceResponse(CurrencyReferenceCreate):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class BonusJSONOutput(BaseModel):
