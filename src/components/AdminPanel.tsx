@@ -153,14 +153,14 @@ export default function AdminPanel() {
                 </div>
 
                 {/* Tables displayed side-by-side */}
-                <div className="flex gap-4 overflow-x-auto pb-4">
+                <div className="flex gap-6 overflow-x-auto pb-2 w-full">
                     {tables.map((table, tableIdx) => {
                         const usedCurrencies = Object.keys(table.values).sort();
                         const unusedCurrencies = CURRENCIES.filter(c => !(c in table.values));
 
                         return (
-                            <div key={table.id} className="flex-shrink-0 border-t-4 border-blue-500 pt-3 bg-slate-850 rounded p-4 min-w-max">
-                                <div className="flex justify-between items-center mb-3 gap-4">
+                            <div key={table.id} className="flex-shrink-0 border-t-4 border-blue-500 pt-3 bg-slate-850 rounded p-4">
+                                <div className="flex justify-between items-center mb-3 gap-4 whitespace-nowrap">
                                     <h5 className="font-semibold text-slate-200 text-sm">{table.name}</h5>
                                     {tables.length > 1 && (
                                         <button
@@ -172,7 +172,7 @@ export default function AdminPanel() {
                                     )}
                                 </div>
 
-                                <table className="border-collapse bg-slate-900 text-xs">
+                                <table className="border-collapse bg-slate-900 text-xs whitespace-nowrap">
                                     <thead>
                                         <tr className="bg-slate-800 border-b border-slate-700">
                                             <th className="px-3 py-1 text-left font-semibold text-blue-300 border-r border-slate-700">Currency</th>
