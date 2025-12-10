@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import CasinoTeamForm from '@/components/CasinoTeamForm';
+import AdminPanel from '@/components/AdminPanel';
+import SimpleBonusForm from '@/components/SimpleBonusForm';
 import TranslationTeam from '@/components/TranslationTeam';
 import OptimizationTeam from '@/components/OptimizationTeam';
 
 export default function Home() {
-    const [activeTab, setActiveTab] = useState('casino');
+    const [activeTab, setActiveTab] = useState('admin');
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
@@ -23,19 +24,28 @@ export default function Home() {
                 {/* Tab Navigation */}
                 <div className="flex gap-2 mb-8 overflow-x-auto pb-2 border-b border-slate-700">
                     <button
-                        onClick={() => setActiveTab('casino')}
-                        className={`px-6 py-3 font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'casino'
-                                ? 'text-blue-400 border-b-3 border-blue-400'
-                                : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
+                        onClick={() => setActiveTab('admin')}
+                        className={`px-6 py-3 font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'admin'
+                            ? 'text-red-400 border-b-3 border-red-400'
+                            : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
                             }`}
                     >
-                        🎰 Casino Team
+                        ⚙️ Admin Setup
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('casino')}
+                        className={`px-6 py-3 font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'casino'
+                            ? 'text-blue-400 border-b-3 border-blue-400'
+                            : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
+                            }`}
+                    >
+                        🎰 Create Bonus
                     </button>
                     <button
                         onClick={() => setActiveTab('translation')}
                         className={`px-6 py-3 font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'translation'
-                                ? 'text-green-400 border-b-3 border-green-400'
-                                : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
+                            ? 'text-green-400 border-b-3 border-green-400'
+                            : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
                             }`}
                     >
                         🌐 Translation Team
@@ -43,8 +53,8 @@ export default function Home() {
                     <button
                         onClick={() => setActiveTab('optimization')}
                         className={`px-6 py-3 font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'optimization'
-                                ? 'text-purple-400 border-b-3 border-purple-400'
-                                : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
+                            ? 'text-purple-400 border-b-3 border-purple-400'
+                            : 'text-slate-400 hover:text-slate-300 border-b-3 border-transparent hover:border-slate-600'
                             }`}
                     >
                         📊 Optimization Team
@@ -53,7 +63,8 @@ export default function Home() {
 
                 {/* Tab Content */}
                 <div className="card">
-                    {activeTab === 'casino' && <CasinoTeamForm />}
+                    {activeTab === 'admin' && <AdminPanel />}
+                    {activeTab === 'casino' && <SimpleBonusForm />}
                     {activeTab === 'translation' && <TranslationTeam />}
                     {activeTab === 'optimization' && <OptimizationTeam />}
                 </div>
