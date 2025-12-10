@@ -12,6 +12,8 @@ interface BonusTemplateFormData {
     schedule_type: string;
     schedule_from: string;
     schedule_to: string;
+    trigger_name: Record<string, string>;
+    trigger_description: Record<string, string>;
     trigger_type: string;
     trigger_iterations: number;
     trigger_duration: string;
@@ -37,6 +39,8 @@ export default function CasinoTeamForm() {
         schedule_type: 'period',
         schedule_from: '',
         schedule_to: '',
+        trigger_name: { '*': 'Reload Bonus' },
+        trigger_description: { '*': 'Weekly reload bonus offer' },
         trigger_type: 'reload',
         trigger_iterations: 3,
         trigger_duration: '7d',
