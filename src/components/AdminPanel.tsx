@@ -31,7 +31,7 @@ export default function AdminPanel() {
     const defaultTable: CurrencyTable = {
         id: '1',
         name: 'Table 1',
-        values: { 'EUR': 0.2 }
+        values: Object.fromEntries(CURRENCIES.map(c => [c, 0.2]))
     };
 
     const [pragmaticConfig, setPragmaticConfig] = useState<StableConfigWithVariations>({
