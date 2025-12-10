@@ -71,41 +71,96 @@ export default function AdminPanel() {
         }
     };
 
-    const renderSettingTable = (field: string, title: string, description: string) => (
-        <div className="space-y-4">
-            <div className="bg-slate-800 p-3 rounded">
-                <h4 className="font-semibold text-slate-300 mb-1">{title}</h4>
-                <p className="text-xs text-slate-400">{description}</p>
-            </div>
-            <table className="w-full border-collapse bg-slate-900 text-sm">
-                <thead>
-                    <tr className="bg-slate-800 border-b border-slate-700">
-                        <th className="px-4 py-2 text-left font-semibold text-blue-300 border-r border-slate-700">Currency</th>
-                        <th className="px-4 py-2 text-center font-semibold text-green-300">Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {CURRENCIES.map((currency, idx) => (
-                        <tr key={currency} className={`border-b border-slate-700 ${idx % 2 === 0 ? 'bg-slate-900' : 'bg-slate-850'}`}>
-                            <td className="px-4 py-2 text-sm font-bold text-blue-300 border-r border-slate-700 bg-slate-800 w-24">
-                                {currency}
-                            </td>
-                            <td className="px-4 py-2">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={((config as any)[field] as Record<string, number>)[currency] || ''}
-                                    onChange={(e) => handleCurrencyChange(currency, field, parseFloat(e.target.value) || 0)}
-                                    className="w-full bg-slate-700 text-white text-center px-3 py-2 rounded text-sm border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                    placeholder="0"
-                                />
-                            </td>
+    const handleRemoveCurrency = (currency: string, field: string) => {
+        setConfig(prev => {
+            const fieldData = { ...(prev[field as keyof StableConfig] as Record<string, number>) };
+            delete fieldData[currency];
+            return {
+                ...prev,
+                [field]: fieldData
+            };
+        });
+    };
+
+    const handleAddCurrency = (field: string) => {
+        const fieldData = (config as any)[field] as Record<string, number>;
+        const unusedCurrencies = CURRENCIES.filter(c => !(c in fieldData));
+        if (unusedCurrencies.length > 0) {
+            const newCurrency = unusedCurrencies[0];
+            setConfig(prev => ({
+                ...prev,
+                [field]: {
+                    ...(prev[field as keyof StableConfig] as Record<string, number>),
+                    [newCurrency]: 0
+                }
+            }));
+        }
+    };
+
+    const renderSettingTable = (field: string, title: string, description: string) => {
+        const fieldData = (config as any)[field] as Record<string, number>;
+        const usedCurrencies = Object.keys(fieldData).sort();
+        const unusedCurrencies = CURRENCIES.filter(c => !(c in fieldData));
+
+        return (
+            <div className="space-y-4">
+                <div className="bg-slate-800 p-3 rounded flex justify-between items-start">
+                    <div>
+                        <h4 className="font-semibold text-slate-300 mb-1">{title}</h4>
+                        <p className="text-xs text-slate-400">{description}</p>
+                    </div>
+                    <button
+                        onClick={() => handleAddCurrency(field)}
+                        disabled={unusedCurrencies.length === 0}
+                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-4"
+                    >
+                        + Add Currency
+                    </button>
+                </div>
+                <table className="w-full border-collapse bg-slate-900 text-sm">
+                    <thead>
+                        <tr className="bg-slate-800 border-b border-slate-700">
+                            <th className="px-4 py-2 text-left font-semibold text-blue-300 border-r border-slate-700">Currency</th>
+                            <th className="px-4 py-2 text-center font-semibold text-green-300">Value</th>
+                            <th className="px-4 py-2 text-center font-semibold text-red-300 w-20">Remove</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+                    </thead>
+                    <tbody>
+                        {usedCurrencies.map((currency, idx) => (
+                            <tr key={currency} className={`border-b border-slate-700 ${idx % 2 === 0 ? 'bg-slate-900' : 'bg-slate-850'}`}>
+                                <td className="px-4 py-2 text-sm font-bold text-blue-300 border-r border-slate-700 bg-slate-800 w-24">
+                                    {currency}
+                                </td>
+                                <td className="px-4 py-2">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={fieldData[currency] || ''}
+                                        onChange={(e) => handleCurrencyChange(currency, field, parseFloat(e.target.value) || 0)}
+                                        className="w-full bg-slate-700 text-white text-center px-3 py-2 rounded text-sm border border-slate-600 focus:border-blue-500 focus:outline-none"
+                                        placeholder="0"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 text-center">
+                                    <button
+                                        onClick={() => handleRemoveCurrency(currency, field)}
+                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded font-semibold"
+                                    >
+                                        ✕
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {usedCurrencies.length === 0 && (
+                    <div className="text-center py-4 text-slate-400 text-sm">
+                        No currencies added yet. Click "+ Add Currency" to get started.
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -114,8 +169,8 @@ export default function AdminPanel() {
                 <button
                     onClick={() => setSelectedProvider('PRAGMATIC')}
                     className={`px-6 py-2 rounded font-semibold transition ${selectedProvider === 'PRAGMATIC'
-                            ? 'bg-blue-600 text-white shadow-lg'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
                 >
                     🎰 PRAGMATIC
@@ -123,8 +178,8 @@ export default function AdminPanel() {
                 <button
                     onClick={() => setSelectedProvider('BETSOFT')}
                     className={`px-6 py-2 rounded font-semibold transition ${selectedProvider === 'BETSOFT'
-                            ? 'bg-purple-600 text-white shadow-lg'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        ? 'bg-purple-600 text-white shadow-lg'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
                 >
                     🎲 BETSOFT
@@ -136,8 +191,8 @@ export default function AdminPanel() {
                 <button
                     onClick={() => setActiveTab('cost')}
                     className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'cost'
-                            ? 'border-blue-500 text-blue-400 bg-slate-800'
-                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        ? 'border-blue-500 text-blue-400 bg-slate-800'
+                        : 'border-transparent text-slate-400 hover:text-slate-300'
                         }`}
                 >
                     💰 Cost (EUR, USD, etc)
@@ -145,8 +200,8 @@ export default function AdminPanel() {
                 <button
                     onClick={() => setActiveTab('amounts')}
                     className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'amounts'
-                            ? 'border-blue-500 text-blue-400 bg-slate-800'
-                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        ? 'border-blue-500 text-blue-400 bg-slate-800'
+                        : 'border-transparent text-slate-400 hover:text-slate-300'
                         }`}
                 >
                     💵 Bonus Amounts
@@ -154,8 +209,8 @@ export default function AdminPanel() {
                 <button
                     onClick={() => setActiveTab('stakes')}
                     className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'stakes'
-                            ? 'border-blue-500 text-blue-400 bg-slate-800'
-                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        ? 'border-blue-500 text-blue-400 bg-slate-800'
+                        : 'border-transparent text-slate-400 hover:text-slate-300'
                         }`}
                 >
                     🎯 Stake Limits
@@ -163,8 +218,8 @@ export default function AdminPanel() {
                 <button
                     onClick={() => setActiveTab('withdrawals')}
                     className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'withdrawals'
-                            ? 'border-blue-500 text-blue-400 bg-slate-800'
-                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        ? 'border-blue-500 text-blue-400 bg-slate-800'
+                        : 'border-transparent text-slate-400 hover:text-slate-300'
                         }`}
                 >
                     🏦 Withdrawal Limits
