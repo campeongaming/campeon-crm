@@ -20,6 +20,7 @@ interface StableConfig {
 
 export default function AdminPanel() {
     const [selectedProvider, setSelectedProvider] = useState('PRAGMATIC');
+    const [activeTab, setActiveTab] = useState<'cost' | 'amounts' | 'stakes' | 'withdrawals'>('cost');
 
     const [pragmaticConfig, setPragmaticConfig] = useState<StableConfig>({
         provider: 'PRAGMATIC',
@@ -70,122 +71,128 @@ export default function AdminPanel() {
         }
     };
 
+    const renderSettingTable = (field: string, title: string, description: string) => (
+        <div className="space-y-4">
+            <div className="bg-slate-800 p-3 rounded">
+                <h4 className="font-semibold text-slate-300 mb-1">{title}</h4>
+                <p className="text-xs text-slate-400">{description}</p>
+            </div>
+            <table className="w-full border-collapse bg-slate-900 text-sm">
+                <thead>
+                    <tr className="bg-slate-800 border-b border-slate-700">
+                        <th className="px-4 py-2 text-left font-semibold text-blue-300 border-r border-slate-700">Currency</th>
+                        <th className="px-4 py-2 text-center font-semibold text-green-300">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {CURRENCIES.map((currency, idx) => (
+                        <tr key={currency} className={`border-b border-slate-700 ${idx % 2 === 0 ? 'bg-slate-900' : 'bg-slate-850'}`}>
+                            <td className="px-4 py-2 text-sm font-bold text-blue-300 border-r border-slate-700 bg-slate-800 w-24">
+                                {currency}
+                            </td>
+                            <td className="px-4 py-2">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={((config as any)[field] as Record<string, number>)[currency] || ''}
+                                    onChange={(e) => handleCurrencyChange(currency, field, parseFloat(e.target.value) || 0)}
+                                    className="w-full bg-slate-700 text-white text-center px-3 py-2 rounded text-sm border border-slate-600 focus:border-blue-500 focus:outline-none"
+                                    placeholder="0"
+                                />
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="card bg-gradient-to-r from-red-950/50 to-slate-800 border-red-700/50">
-                <h2 className="text-2xl font-bold text-red-300 mb-2">⚙️ Admin Panel - Stable Values</h2>
-                <p className="text-slate-400 text-sm">Configure all default values for each provider in one table. These values will auto-fill in the bonus creation form.</p>
-            </div>
-
             {/* Provider Selection */}
-            <div className="card">
-                <h3 className="text-lg font-semibold text-slate-300 mb-4">Select Provider</h3>
-                <div className="flex gap-4">
-                    {PROVIDERS.map(provider => (
-                        <button
-                            key={provider}
-                            onClick={() => setSelectedProvider(provider)}
-                            className={`px-6 py-3 rounded-lg font-semibold transition ${selectedProvider === provider
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                }`}
-                        >
-                            {provider === 'PRAGMATIC' ? '🎰 Pragmatic' : '🎲 Betsoft'}
-                        </button>
-                    ))}
-                </div>
+            <div className="flex gap-2">
+                <button
+                    onClick={() => setSelectedProvider('PRAGMATIC')}
+                    className={`px-6 py-2 rounded font-semibold transition ${selectedProvider === 'PRAGMATIC'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                >
+                    🎰 PRAGMATIC
+                </button>
+                <button
+                    onClick={() => setSelectedProvider('BETSOFT')}
+                    className={`px-6 py-2 rounded font-semibold transition ${selectedProvider === 'BETSOFT'
+                            ? 'bg-purple-600 text-white shadow-lg'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                >
+                    🎲 BETSOFT
+                </button>
             </div>
 
-            {/* Comprehensive Excel-like Table */}
-            <div className="card">
-                <h3 className="text-lg font-semibold text-slate-300 mb-4">{selectedProvider} - All Settings</h3>
-                <table className="w-full border-collapse bg-slate-900 text-sm">
-                    <thead>
-                        <tr className="bg-slate-800 border-b border-slate-700">
-                            <th className="px-4 py-2 text-left font-semibold text-slate-300 border-r border-slate-700">Currency</th>
-                            <th className="px-3 py-2 text-center font-semibold text-blue-300 border-r border-slate-700">💰 Cost</th>
-                            <th className="px-3 py-2 text-center font-semibold text-green-300 border-r border-slate-700">Min Bonus</th>
-                            <th className="px-3 py-2 text-center font-semibold text-green-300 border-r border-slate-700">Max Bonus</th>
-                            <th className="px-3 py-2 text-center font-semibold text-yellow-300 border-r border-slate-700">Min Stake</th>
-                            <th className="px-3 py-2 text-center font-semibold text-yellow-300 border-r border-slate-700">Max Stake</th>
-                            <th className="px-3 py-2 text-center font-semibold text-purple-300">Max Withdraw</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {CURRENCIES.map((currency, idx) => (
-                            <tr key={currency} className={`border-b border-slate-700 ${idx % 2 === 0 ? 'bg-slate-900' : 'bg-slate-850'}`}>
-                                <td className="px-4 py-2 text-sm font-bold text-blue-300 border-r border-slate-700 bg-slate-800">
-                                    {currency}
-                                </td>
-                                <td className="px-3 py-1 border-r border-slate-700">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={((config as any).cost as Record<string, number>)[currency] || ''}
-                                        onChange={(e) => handleCurrencyChange(currency, 'cost', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-700 text-white text-center px-1 py-1 rounded text-xs border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                        placeholder="0"
-                                    />
-                                </td>
-                                <td className="px-3 py-1 border-r border-slate-700">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={((config as any).minimum_amount as Record<string, number>)[currency] || ''}
-                                        onChange={(e) => handleCurrencyChange(currency, 'minimum_amount', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-700 text-white text-center px-1 py-1 rounded text-xs border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                        placeholder="0"
-                                    />
-                                </td>
-                                <td className="px-3 py-1 border-r border-slate-700">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={((config as any).maximum_amount as Record<string, number>)[currency] || ''}
-                                        onChange={(e) => handleCurrencyChange(currency, 'maximum_amount', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-700 text-white text-center px-1 py-1 rounded text-xs border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                        placeholder="0"
-                                    />
-                                </td>
-                                <td className="px-3 py-1 border-r border-slate-700">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={((config as any).minimum_stake_to_wager as Record<string, number>)[currency] || ''}
-                                        onChange={(e) => handleCurrencyChange(currency, 'minimum_stake_to_wager', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-700 text-white text-center px-1 py-1 rounded text-xs border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                        placeholder="0"
-                                    />
-                                </td>
-                                <td className="px-3 py-1 border-r border-slate-700">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={((config as any).maximum_stake_to_wager as Record<string, number>)[currency] || ''}
-                                        onChange={(e) => handleCurrencyChange(currency, 'maximum_stake_to_wager', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-700 text-white text-center px-1 py-1 rounded text-xs border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                        placeholder="0"
-                                    />
-                                </td>
-                                <td className="px-3 py-1">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={((config as any).maximum_withdraw as Record<string, number>)[currency] || ''}
-                                        onChange={(e) => handleCurrencyChange(currency, 'maximum_withdraw', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-700 text-white text-center px-1 py-1 rounded text-xs border border-slate-600 focus:border-blue-500 focus:outline-none"
-                                        placeholder="0"
-                                    />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <p className="text-xs text-slate-400 mt-3">💡 Edit any cell and click Save. Separate tables for Pragmatic and Betsoft.</p>
-            </div>            {/* Message */}
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-slate-700 overflow-x-auto">
+                <button
+                    onClick={() => setActiveTab('cost')}
+                    className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'cost'
+                            ? 'border-blue-500 text-blue-400 bg-slate-800'
+                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        }`}
+                >
+                    💰 Cost (EUR, USD, etc)
+                </button>
+                <button
+                    onClick={() => setActiveTab('amounts')}
+                    className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'amounts'
+                            ? 'border-blue-500 text-blue-400 bg-slate-800'
+                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        }`}
+                >
+                    💵 Bonus Amounts
+                </button>
+                <button
+                    onClick={() => setActiveTab('stakes')}
+                    className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'stakes'
+                            ? 'border-blue-500 text-blue-400 bg-slate-800'
+                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        }`}
+                >
+                    🎯 Stake Limits
+                </button>
+                <button
+                    onClick={() => setActiveTab('withdrawals')}
+                    className={`px-4 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition ${activeTab === 'withdrawals'
+                            ? 'border-blue-500 text-blue-400 bg-slate-800'
+                            : 'border-transparent text-slate-400 hover:text-slate-300'
+                        }`}
+                >
+                    🏦 Withdrawal Limits
+                </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="bg-slate-800 rounded-lg p-6 space-y-4 min-h-96">
+                {activeTab === 'cost' && renderSettingTable('cost', 'Cost Per Player', 'How much you pay (in EUR) for each player receiving this bonus')}
+                {activeTab === 'amounts' && (
+                    <div className="space-y-6">
+                        {renderSettingTable('minimum_amount', 'Minimum Bonus Amount', 'Smallest bonus value per currency')}
+                        {renderSettingTable('maximum_amount', 'Maximum Bonus Amount', 'Largest bonus value per currency')}
+                    </div>
+                )}
+                {activeTab === 'stakes' && (
+                    <div className="space-y-6">
+                        {renderSettingTable('minimum_stake_to_wager', 'Minimum Stake', 'Smallest bet amount allowed')}
+                        {renderSettingTable('maximum_stake_to_wager', 'Maximum Stake', 'Largest bet amount allowed')}
+                    </div>
+                )}
+                {activeTab === 'withdrawals' && renderSettingTable('maximum_withdraw', 'Maximum Withdrawal Amount', 'Max amount player can withdraw from bonus winnings')}
+            </div>
+
+            {/* Status Message */}
             {message && (
-                <div className={`p-4 rounded-lg ${message.includes('✅') ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
+                <div className={`p-4 rounded text-center font-semibold ${message.startsWith('✅') ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
+                    }`}>
                     {message}
                 </div>
             )}
@@ -194,9 +201,9 @@ export default function AdminPanel() {
             <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full button-primary py-3 text-lg font-semibold"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-lg transition disabled:opacity-50"
             >
-                {loading ? '💾 Saving...' : `💾 Save ${selectedProvider} Values`}
+                {loading ? '💾 Saving...' : `✅ Save ${selectedProvider} Values`}
             </button>
         </div>
     );
