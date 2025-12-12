@@ -6,6 +6,34 @@ from datetime import datetime
 Base = declarative_base()
 
 
+class StableConfig(Base):
+    """
+    Stores provider-specific stable configuration values.
+    Contains pricing tables with currency-specific values for cost, amounts, stakes, and withdrawals.
+    """
+    __tablename__ = "stable_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider = Column(String(50), nullable=False,
+                      index=True)  # "PRAGMATIC", "BETSOFT"
+
+    # Pricing tables stored as JSON
+    # Structure: [{"id": "1", "name": "Table 1", "values": {"EUR": 0.2, "USD": 0.25, ...}}, ...]
+    cost = Column(JSON, default=[])
+    maximum_amount = Column(JSON, default=[])
+    minimum_amount = Column(JSON, default=[])
+    minimum_stake_to_wager = Column(JSON, default=[])
+    maximum_stake_to_wager = Column(JSON, default=[])
+    maximum_withdraw = Column(JSON, default=[])
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<StableConfig {self.provider}>"
+
+
 class BonusTemplate(Base):
     """
     Stores the complete bonus template with schedule, trigger, and config.

@@ -3,6 +3,34 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
+class CurrencyTable(BaseModel):
+    """Schema for a single pricing table with currencies"""
+    id: str
+    name: str
+    values: Dict[str, float]
+
+
+class StableConfigCreate(BaseModel):
+    """Schema for creating/updating stable config"""
+    provider: str  # "PRAGMATIC", "BETSOFT"
+    cost: List[CurrencyTable] = []
+    maximum_amount: List[CurrencyTable] = []
+    minimum_amount: List[CurrencyTable] = []
+    minimum_stake_to_wager: List[CurrencyTable] = []
+    maximum_stake_to_wager: List[CurrencyTable] = []
+    maximum_withdraw: List[CurrencyTable] = []
+
+
+class StableConfigResponse(StableConfigCreate):
+    """Schema for stable config responses"""
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class BonusTemplateCreate(BaseModel):
     """Schema for creating a new bonus template"""
     id: str  # e.g., "Black Friday: Casino Reload 200% up to €300 21.11.25"

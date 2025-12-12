@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 # Import routers when database is ready
 from api.bonus_templates import router as bonus_templates_router
+from api.stable_config import router as stable_config_router
 from database.database import init_db
 
 
@@ -38,6 +39,8 @@ app.add_middleware(
 # Include routers
 app.include_router(bonus_templates_router, prefix="/api",
                    tags=["bonus-templates"])
+app.include_router(stable_config_router, prefix="/api",
+                   tags=["stable-config"])
 
 
 @app.get("/health")
