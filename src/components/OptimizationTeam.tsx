@@ -174,23 +174,28 @@ export default function OptimizationTeam() {
             </div>
 
             {/* Month Navigation */}
-            <div className="bg-slate-700/30 border border-slate-600 rounded p-4">
-                <h3 className="text-lg font-semibold text-purple-400 mb-4">📅 Browse by Month</h3>
-                <div className="flex items-center justify-between gap-4">
+            <div className="bg-gradient-to-r from-slate-700/40 to-slate-600/40 border border-slate-500 rounded-lg p-6 shadow-lg">
+                <h3 className="text-lg font-semibold text-purple-400 mb-6">📅 Browse by Month</h3>
+                <div className="flex items-center justify-between gap-8">
                     <button
                         onClick={handlePreviousMonth}
-                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 transform"
                     >
-                        ← Previous
+                        ← Previous Month
                     </button>
-                    <div className="text-center text-lg font-semibold text-purple-400">
-                        {MONTHS[selectedMonth]} {selectedYear}
+                    <div className="flex-shrink-0 text-center">
+                        <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                            {MONTHS[selectedMonth]}
+                        </div>
+                        <div className="text-lg font-semibold text-purple-300">
+                            {selectedYear}
+                        </div>
                     </div>
                     <button
                         onClick={handleNextMonth}
-                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 transform"
                     >
-                        Next →
+                        Next Month →
                     </button>
                 </div>
             </div>
