@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import AdminPanel from '@/components/AdminPanel';
 import SimpleBonusForm from '@/components/SimpleBonusForm';
+import BonusBrowser from '@/components/BonusBrowser';
 import TranslationTeam from '@/components/TranslationTeam';
 import OptimizationTeam from '@/components/OptimizationTeam';
 
 const tabs = [
     { id: 'admin', label: '⚙️ Admin Setup', active: 'from-red-600 to-red-700', glow: 'shadow-red-500/30' },
     { id: 'casino', label: '🎰 Create Bonus', active: 'from-blue-600 to-blue-700', glow: 'shadow-blue-500/30' },
+    { id: 'browse', label: '📅 Browse Bonuses', active: 'from-cyan-600 to-cyan-700', glow: 'shadow-cyan-500/30' },
     { id: 'translation', label: '🌐 Translation Team', active: 'from-green-600 to-green-700', glow: 'shadow-green-500/30' },
     { id: 'optimization', label: '📊 Optimization Team', active: 'from-purple-600 to-purple-700', glow: 'shadow-purple-500/30' },
 ] as const;
@@ -59,6 +61,7 @@ export default function Home() {
                 <div className="rounded-2xl border border-slate-700/60 bg-slate-900/40 shadow-xl shadow-black/20 backdrop-blur p-5 md:p-7">
                     {activeTab === 'admin' && <AdminPanel />}
                     {activeTab === 'casino' && <SimpleBonusForm />}
+                    {activeTab === 'browse' && <BonusBrowser />}
                     {activeTab === 'translation' && <TranslationTeam />}
                     {activeTab === 'optimization' && <OptimizationTeam />}
                 </div>
