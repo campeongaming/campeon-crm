@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
 import BonusWizard from './BonusWizard';
 
 interface BonusItem {
@@ -62,7 +63,7 @@ export default function BonusBrowser() {
         setLoading(true);
         setMessage('');
         try {
-            const response = await axios.get(`/api/bonus-templates/dates/${selectedYear}/${selectedMonth}`);
+            const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/dates/${selectedYear}/${selectedMonth}`);
 
             // Filter by day if a specific day is selected, otherwise show all for the month
             let bonusesForDisplay = response.data;
@@ -106,7 +107,7 @@ export default function BonusBrowser() {
         setLoading(true);
         setMessage('');
         try {
-            const response = await axios.get(`/api/bonus-templates/search`, {
+            const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/search`, {
                 params: { id: searchId }
             });
             setBonuses([response.data]);
@@ -129,7 +130,7 @@ export default function BonusBrowser() {
 
         setLoading(true);
         try {
-            await axios.delete(`/api/bonus-templates/${bonusId}`);
+            await axios.delete(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${bonusId}`);
             setMessage(`✅ Bonus "${bonusId}" deleted successfully`);
             setBonuses(bonuses.filter(b => b.id !== bonusId));
             if (selectedBonusId === bonusId) {
