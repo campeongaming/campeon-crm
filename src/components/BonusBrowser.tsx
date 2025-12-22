@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 import axios from 'axios';
+import BonusWizard from './BonusWizard';
 
 interface BonusItem {
     id: string;
@@ -24,6 +25,7 @@ export default function BonusBrowser() {
     const [selectedBonusId, setSelectedBonusId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [showWizard, setShowWizard] = useState(false);
 
     // Translation Team state
     const [translationAction, setTranslationAction] = useState('view');
@@ -196,13 +198,38 @@ export default function BonusBrowser() {
         setMessage('✅ Copied to clipboard!');
     };
 
+    const handleBonusCreated = (bonusData: any) => {
+        console.log('New bonus created:', bonusData);
+        setMessage(`✅ Bonus created with ID: ${bonusData.id}`);
+        setShowWizard(false);
+        // You can add API call here to save the bonus to the backend
+    };
+
+    // Show wizard if toggled
+    if (showWizard) {
+        return (
+            <BonusWizard
+                onBonusCreated={handleBonusCreated}
+                onCancel={() => setShowWizard(false)}
+            />
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 p-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-white mb-2">📅 Bonus Browser</h1>
-                    <p className="text-slate-400">Browse and manage bonuses by date or search by ID</p>
+                <div className="mb-8 flex justify-between items-start">
+                    <div>
+                        <h1 className="text-4xl font-bold text-white mb-2">📅 Bonus Browser</h1>
+                        <p className="text-slate-400">Browse and manage bonuses by date or search by ID</p>
+                    </div>
+                    <button
+                        onClick={() => setShowWizard(true)}
+                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
+                    >
+                        ✨ Create New Bonus
+                    </button>
                 </div>
 
                 {/* Two Sections */}
