@@ -59,28 +59,36 @@ export default function BonusBrowser() {
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
     const handleBrowse = async () => {
-        if (!selectedDay) {
-            setMessage('❌ Please select a day');
-            return;
-        }
-
         setLoading(true);
         setMessage('');
         try {
             const response = await axios.get(`/api/bonus-templates/dates/${selectedYear}/${selectedMonth}`);
-            // Filter by day on frontend since backend returns all for month
-            const bonusesForDay = response.data.filter((bonus: any) => {
-                const bonusDate = new Date(bonus.created_at);
-                return bonusDate.getDate() === selectedDay;
-            });
-
-            if (bonusesForDay.length === 0) {
-                setMessage(`📭 No bonuses found for ${currentMonth?.name} ${selectedDay}, ${selectedYear}`);
-                setBonuses([]);
+            
+            // Filter by day if a specific day is selected, otherwise show all for the month
+            let bonusesForDisplay = response.data;
+            
+            if (selectedDay && selectedDay !== 0) {
+                // Show bonuses for specific day
+                bonusesForDisplay = response.data.filter((bonus: any) => {
+                    const bonusDate = new Date(bonus.created_at);
+                    return bonusDate.getDate() === selectedDay;
+                });
+                
+                if (bonusesForDisplay.length === 0) {
+                    setMessage(`📭 No bonuses found for ${currentMonth?.name} ${selectedDay}, ${selectedYear}`);
+                } else {
+                    setMessage(`✅ Found ${bonusesForDisplay.length} bonus(es) on ${currentMonth?.name} ${selectedDay}`);
+                }
             } else {
-                setBonuses(bonusesForDay);
-                setMessage(`✅ Found ${bonusesForDay.length} bonus(es)`);
+                // Show all bonuses for the month
+                if (bonusesForDisplay.length === 0) {
+                    setMessage(`📭 No bonuses found in ${currentMonth?.name} ${selectedYear}`);
+                } else {
+                    setMessage(`✅ Found ${bonusesForDisplay.length} bonus(es) in ${currentMonth?.name} ${selectedYear}`);
+                }
             }
+            
+            setBonuses(bonusesForDisplay);
         } catch (error: any) {
             setMessage(`❌ Error: ${error.response?.data?.detail || error.message}`);
             setBonuses([]);
@@ -297,10 +305,10 @@ export default function BonusBrowser() {
                             </label>
                             <select
                                 value={selectedDay || ''}
-                                onChange={(e) => setSelectedDay(e.target.value ? parseInt(e.target.value) : null)}
+                                onChange={(e) => setSelectedDay(e.target.value ? parseInt(e.target.value) : 0)}
                                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
                             >
-                                <option value="">-- Select a day --</option>
+                                <option value="0">📅 All Days in {currentMonth?.name}</option>
                                 {days.map(day => (
                                     <option key={day} value={day}>{day}</option>
                                 ))}
@@ -309,7 +317,7 @@ export default function BonusBrowser() {
 
                         <button
                             onClick={handleBrowse}
-                            disabled={loading || !selectedDay}
+                            disabled={loading}
                             className="w-full px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-all disabled:cursor-not-allowed"
                         >
                             {loading ? '⏳ Loading...' : '🔍 Browse Bonuses'}
