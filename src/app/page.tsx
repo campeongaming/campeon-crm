@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import AdminPanel from '@/components/AdminPanel';
-import UnifiedBonusForm from '@/components/UnifiedBonusForm';
+import DepositBonusForm from '@/components/DepositBonusForm';
 import BonusBrowser from '@/components/BonusBrowser';
 import TranslationTeam from '@/components/TranslationTeam';
 import OptimizationTeam from '@/components/OptimizationTeam';
@@ -60,7 +60,7 @@ export default function Home() {
                 {/* Content wrapper (replaces "card") */}
                 <div className="rounded-2xl border border-slate-700/60 bg-slate-900/40 shadow-xl shadow-black/20 backdrop-blur p-5 md:p-7">
                     {activeTab === 'admin' && <AdminPanel />}
-                    {activeTab === 'casino' && <UnifiedBonusForm />}
+                    {activeTab === 'casino' && <DepositBonusForm />}
                     {activeTab === 'browse' && <BonusBrowser />}
                     {activeTab === 'translation' && <TranslationTeam />}
                     {activeTab === 'optimization' && <OptimizationTeam />}

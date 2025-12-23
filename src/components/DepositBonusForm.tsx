@@ -8,33 +8,21 @@ const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN
 const BONUS_TYPES_OPTIONS = ['cost', 'free_bet', 'cash'];
 
 interface DepositBonusData {
-    // Basic info
     id: string;
-    name_en: string;
-    description_en: string;
     provider: string;
     brand: string;
-    category: string;
-    triggerType: string;
-
-    // Deposit specific
-    depositCount: string; // 1, 2, 3, etc.
-    minimumAmount: string;
-    percentage: string;
-    bonusType: string; // cost, free_bet, cash
-    duration: string; // Default 7d
-    gameName: string; // Game name (required)
-    selectedCostTable: string; // EUR cost value to select
-
-    // Per-currency tables
+    bonusType: string;
+    gameName: string;
+    eurCostInput: string;
+    freeSpins: string;
+    duration: string;
+    scheduleFrom: string;
+    scheduleTo: string;
+    eurMaxWithdraw: string;
     cost: Record<string, number>;
     multipliers: Record<string, number>;
     maximumBets: Record<string, number>;
     maximumWithdraw: Record<string, number>;
-
-    // Schedule
-    scheduleFrom: string;
-    scheduleTo: string;
 }
 
 interface CurrencyTable {
@@ -46,36 +34,33 @@ interface CurrencyTable {
 export default function DepositBonusForm() {
     const [formData, setFormData] = useState<DepositBonusData>({
         id: '',
-        name_en: '',
-        description_en: '',
         provider: 'PRAGMATIC',
         brand: 'PRAGMATIC',
-        category: 'GAMES',
-        triggerType: 'deposit',
-        depositCount: '1',
-        minimumAmount: '25',
-        percentage: '100',
         bonusType: 'cost',
-        duration: '7d',
         gameName: '',
-        selectedCostTable: '',
-        cost: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
-        multipliers: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
-        maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, 200])),
-        maximumWithdraw: Object.fromEntries(CURRENCIES.map(c => [c, 100])),
+        eurCostInput: '',
+        freeSpins: '',
+        duration: '7d',
         scheduleFrom: '',
         scheduleTo: '',
+        eurMaxWithdraw: '100',
+        cost: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
+        multipliers: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
+        maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
+        maximumWithdraw: Object.fromEntries(CURRENCIES.map(c => [c, 100])),
     });
 
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'basic' | 'multipliers' | 'bets' | 'withdraw' | 'schedule'>('basic');
     const [costTables, setCostTables] = useState<CurrencyTable[]>([]);
+    const [withdrawalValues, setWithdrawalValues] = useState<Record<string, number>>(
+        Object.fromEntries(CURRENCIES.map(c => [c, 100]))
+    );
     const [loadingCosts, setLoadingCosts] = useState(false);
 
-    // Fetch cost tables when provider changes
+    // Fetch cost and withdrawal tables when provider changes
     useEffect(() => {
-        const fetchCostTables = async () => {
+        const fetchTables = async () => {
             setLoadingCosts(true);
             try {
                 const response = await axios.get(
@@ -84,38 +69,107 @@ export default function DepositBonusForm() {
                 if (response.data?.cost) {
                     setCostTables(response.data.cost);
                 }
+                // Maximum withdraw is a single table with all currencies
+                if (response.data?.maximum_withdraw && response.data.maximum_withdraw.values) {
+                    setWithdrawalValues(response.data.maximum_withdraw.values);
+                }
             } catch (error) {
-                console.log('Error fetching cost tables:', error);
+                console.log('Error fetching tables:', error);
             } finally {
                 setLoadingCosts(false);
             }
         };
 
-        fetchCostTables();
+        fetchTables();
     }, [formData.provider]);
 
-    const handleBasicChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-    };
 
-    // When cost table is selected, populate cost and multiplier
-    const handleSelectCostTable = (tableId: string) => {
-        const selectedTable = costTables.find(t => t.id === tableId);
-        if (selectedTable) {
+        // Auto-match cost table when EUR value is entered
+        if (name === 'eurCostInput') {
+            const eurValue = parseFloat(value);
+            const matchingTable = costTables.find(t => Math.abs((t.values['EUR'] || 0) - eurValue) < 0.001);
+            if (matchingTable) {
+                // Fetch admin config to get maximum bets data
+                const fetchAdminData = async () => {
+                    try {
+                        const response = await axios.get(
+                            `${API_ENDPOINTS.BASE_URL}/api/stable-config/${formData.provider}`
+                        );
+                        const adminConfig = response.data;
+
+                        // Build maximum bets from admin setup
+                        const maxBets: Record<string, number> = {};
+
+                        CURRENCIES.forEach(curr => {
+                            // Maximum Bets from admin setup
+                            if (adminConfig?.maximum_stake_to_wager) {
+                                const adminBets = adminConfig.maximum_stake_to_wager.find(
+                                    (item: any) => {
+                                        return item.currency === curr ||
+                                            item.code === curr ||
+                                            (item.name && item.name.includes(curr));
+                                    }
+                                );
+                                maxBets[curr] = adminBets?.value || adminBets?.cap || 0;
+                            } else {
+                                maxBets[curr] = 0;
+                            }
+                        });
+
+                        setFormData(prev => ({
+                            ...prev,
+                            eurCostInput: value,
+                            cost: matchingTable.values,
+                            multipliers: { ...matchingTable.values },
+                            maximumWithdraw: withdrawalValues,
+                            maximumBets: maxBets
+                        }));
+                    } catch (error) {
+                        console.log('Error fetching admin data:', error);
+                        setFormData(prev => ({
+                            ...prev,
+                            eurCostInput: value,
+                            cost: matchingTable.values,
+                            multipliers: { ...matchingTable.values },
+                            maximumWithdraw: withdrawalValues
+                        }));
+                    }
+                };
+
+                fetchAdminData();
+                setMessage(`✅ Cost matched: ${matchingTable.name}`);
+                setTimeout(() => setMessage(''), 2000);
+            }
+        }
+
+        // Update maximum withdraw when EUR value changes
+        if (name === 'eurMaxWithdraw') {
+            const eurValue = parseFloat(value) || 100;
+            // Update EUR value in the withdrawal values
+            const updatedWithdrawalValues = {
+                ...withdrawalValues,
+                EUR: eurValue
+            };
             setFormData(prev => ({
                 ...prev,
-                selectedCostTable: tableId,
-                cost: selectedTable.values,
-                multipliers: { ...selectedTable.values } // Same as cost for now
+                eurMaxWithdraw: value,
+                maximumWithdraw: updatedWithdrawalValues
             }));
+            setMessage(`✅ EUR withdrawal cap set to ${eurValue}`);
+            setTimeout(() => setMessage(''), 2000);
         }
     };
 
-    const handleCurrencyChange = (field: 'multipliers' | 'maximumBets' | 'maximumWithdraw', currency: string, value: number) => {
+    // When free spins is changed, update all maximumBets to same value
+    const handleFreeSpinsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseFloat(e.target.value) || 0;
         setFormData(prev => ({
             ...prev,
-            [field]: { ...prev[field], [currency]: value }
+            freeSpins: e.target.value,
+            maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, value]))
         }));
     };
 
@@ -124,46 +178,46 @@ export default function DepositBonusForm() {
         setLoading(true);
 
         try {
-            if (!formData.name_en.trim()) {
-                setMessage('❌ Bonus name is required');
-                setLoading(false);
-                return;
-            }
-
             if (!formData.gameName.trim()) {
                 setMessage('❌ Game name is required');
                 setLoading(false);
                 return;
             }
 
-            if (!formData.selectedCostTable) {
-                setMessage('❌ Please select a cost table');
+            if (!formData.eurCostInput || parseFloat(formData.eurCostInput) <= 0) {
+                setMessage('❌ Please enter a valid EUR cost value');
                 setLoading(false);
                 return;
             }
 
+            if (!formData.freeSpins || parseFloat(formData.freeSpins) <= 0) {
+                setMessage('❌ Please enter number of free spins');
+                setLoading(false);
+                return;
+            }
+
+            if (Object.values(formData.cost).every(v => v === 0)) {
+                setMessage('❌ Cost table not found. Please select a valid EUR cost from admin setup.');
+                setLoading(false);
+                return;
+            }
+
+            // Ensure maximumBets gets free spins value
+            const freeSpinsValue = parseFloat(formData.freeSpins) || 0;
+            const maximumBetsWithFreeSpin = Object.fromEntries(
+                CURRENCIES.map(c => [c, freeSpinsValue])
+            );
+
             const payload: any = {
-                id: formData.id || `DEPOSIT_${formData.depositCount}_${Date.now()}`,
+                id: formData.id || `DEPOSIT_${Date.now()}`,
                 trigger: {
-                    name: {
-                        '*': formData.name_en,
-                        en: formData.name_en,
-                    },
-                    description: {
-                        '*': formData.description_en,
-                        en: formData.description_en,
-                    },
-                    minimumAmount: {
-                        '*': parseFloat(formData.minimumAmount) || 25,
-                    },
-                    type: formData.triggerType,
+                    type: 'deposit',
                     duration: formData.duration,
-                    minimumDepositCount: parseInt(formData.depositCount) || 1,
                 },
                 config: {
                     cost: formData.cost,
                     multiplier: formData.multipliers,
-                    maximumBets: formData.maximumBets,
+                    maximumBets: maximumBetsWithFreeSpin,
                     maximumWithdraw: Object.fromEntries(
                         Object.entries(formData.maximumWithdraw).map(([curr, val]) => [
                             curr,
@@ -174,10 +228,8 @@ export default function DepositBonusForm() {
                     brand: formData.brand,
                     type: formData.bonusType,
                     withdrawActive: false,
-                    category: formData.category.toLowerCase(),
                     expiry: formData.duration,
                     extra: {
-                        category: formData.category.toLowerCase(),
                         game: formData.gameName
                     }
                 },
@@ -191,37 +243,36 @@ export default function DepositBonusForm() {
                 };
             }
 
-            const response = await axios.post(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates`, payload);
+            const response = await axios.post(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/simple`, payload);
             setMessage(`✅ Deposit bonus "${response.data.id}" created successfully!`);
 
             // Reset form
             setFormData({
                 id: '',
-                name_en: '',
-                description_en: '',
                 provider: 'PRAGMATIC',
                 brand: 'PRAGMATIC',
-                category: 'GAMES',
-                triggerType: 'deposit',
-                depositCount: '1',
-                minimumAmount: '25',
-                percentage: '100',
                 bonusType: 'cost',
-                duration: '7d',
                 gameName: '',
-                selectedCostTable: '',
-                cost: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
-                multipliers: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
-                maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, 200])),
-                maximumWithdraw: Object.fromEntries(CURRENCIES.map(c => [c, 100])),
+                eurCostInput: '',
+                freeSpins: '',
+                duration: '7d',
                 scheduleFrom: '',
                 scheduleTo: '',
+                eurMaxWithdraw: '100',
+                cost: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
+                multipliers: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
+                maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
+                maximumWithdraw: Object.fromEntries(CURRENCIES.map(c => [c, c === 'EUR' ? 100 : 100])),
             });
-            setActiveTab('basic');
 
             setTimeout(() => setMessage(''), 5000);
         } catch (error: any) {
-            const errorMsg = error.response?.data?.detail || error.message;
+            let errorMsg = error.message;
+            if (error.response?.data?.detail) {
+                errorMsg = typeof error.response.data.detail === 'string'
+                    ? error.response.data.detail
+                    : JSON.stringify(error.response.data.detail, null, 2);
+            }
             setMessage(`❌ Error: ${errorMsg}`);
         } finally {
             setLoading(false);
@@ -238,275 +289,140 @@ export default function DepositBonusForm() {
                 </div>
             )}
 
-            {/* Tab Navigation */}
-            <div className="flex gap-2 flex-wrap">
-                {[
-                    { id: 'basic', label: '📋 Basic Info' },
-                    { id: 'multipliers', label: '✖️ Multipliers' },
-                    { id: 'bets', label: '🎯 Max Bets' },
-                    { id: 'withdraw', label: '🏦 Max Withdraw' },
-                    { id: 'schedule', label: '📅 Schedule' },
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
-                        className={`px-4 py-2 rounded font-medium transition ${activeTab === tab.id
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                            }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Basic Info Tab */}
-                {activeTab === 'basic' && (
-                    <div className="bg-gray-800 p-6 rounded border border-gray-700 space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Bonus Name (English) *</label>
-                            <input
-                                type="text"
-                                name="name_en"
-                                value={formData.name_en}
-                                onChange={handleBasicChange}
-                                placeholder="e.g., 200 FS with your 3rd Deposit"
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
+                {/* EUR Cost Value */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">EUR Cost *</label>
+                    <input
+                        type="number"
+                        name="eurCostInput"
+                        value={formData.eurCostInput}
+                        onChange={handleChange}
+                        step="0.01"
+                        placeholder="e.g., 0.12"
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Enter EUR cost from admin setup (auto-populates all currencies)</p>
+                </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Description (English)</label>
-                            <input
-                                type="text"
-                                name="description_en"
-                                value={formData.description_en}
-                                onChange={handleBasicChange}
-                                placeholder="e.g., on Bigger Bass Bonanza"
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
+                {/* Free Spins */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Free Spins Count *</label>
+                    <input
+                        type="number"
+                        name="freeSpins"
+                        value={formData.freeSpins}
+                        onChange={handleFreeSpinsChange}
+                        step="1"
+                        placeholder="e.g., 200"
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Same for all currencies</p>
+                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Deposit Count *</label>
-                                <select
-                                    name="depositCount"
-                                    value={formData.depositCount}
-                                    onChange={handleBasicChange}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="1">1st Deposit</option>
-                                    <option value="2">2nd Deposit</option>
-                                    <option value="3">3rd Deposit</option>
-                                    <option value="4">4th Deposit</option>
-                                    <option value="5">5th Deposit</option>
-                                </select>
-                            </div>
+                {/* Maximum Withdraw EUR Only */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Maximum Withdraw - EUR (cap)</label>
+                    <input
+                        type="number"
+                        name="eurMaxWithdraw"
+                        value={formData.eurMaxWithdraw}
+                        onChange={handleChange}
+                        step="1"
+                        placeholder="e.g., 100"
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Other currencies fetched from admin setup</p>
+                </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Bonus Type *</label>
-                                <select
-                                    name="bonusType"
-                                    value={formData.bonusType}
-                                    onChange={handleBasicChange}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                >
-                                    {BONUS_TYPES_OPTIONS.map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
+                {/* Game Name */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Game Name *</label>
+                    <input
+                        type="text"
+                        name="gameName"
+                        value={formData.gameName}
+                        onChange={handleChange}
+                        placeholder="e.g., Bigger Bass Bonanza"
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                    />
+                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Minimum Amount (€) *</label>
-                                <input
-                                    type="number"
-                                    name="minimumAmount"
-                                    value={formData.minimumAmount}
-                                    onChange={handleBasicChange}
-                                    step="0.01"
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Percentage (%)</label>
-                                <input
-                                    type="number"
-                                    name="percentage"
-                                    value={formData.percentage}
-                                    onChange={handleBasicChange}
-                                    step="0.01"
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Game Name *</label>
-                            <input
-                                type="text"
-                                name="gameName"
-                                value={formData.gameName}
-                                onChange={handleBasicChange}
-                                placeholder="e.g., Bigger Bass Bonanza"
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Provider *</label>
-                                <select
-                                    name="provider"
-                                    value={formData.provider}
-                                    onChange={handleBasicChange}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="PRAGMATIC">PRAGMATIC</option>
-                                    <option value="BETSOFT">BETSOFT</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Cost Table *</label>
-                                {loadingCosts ? (
-                                    <div className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-gray-400">Loading...</div>
-                                ) : (
-                                    <select
-                                        value={formData.selectedCostTable}
-                                        onChange={(e) => handleSelectCostTable(e.target.value)}
-                                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                    >
-                                        <option value="">-- Select a cost table --</option>
-                                        {costTables.map(table => (
-                                            <option key={table.id} value={table.id}>
-                                                {table.name} (€{table.values['EUR']?.toFixed(2)})
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Duration *</label>
-                            <select
-                                name="duration"
-                                value={formData.duration}
-                                onChange={handleBasicChange}
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                            >
-                                <option value="7d">7 Days</option>
-                                <option value="14d">14 Days</option>
-                                <option value="30d">30 Days</option>
-                                <option value="1y">1 Year</option>
-                            </select>
-                        </div>
-                    </div>
-                )}
-
-                {/* Multipliers Tab */}
-                {activeTab === 'multipliers' && (
-                    <div className="bg-gray-800 p-6 rounded border border-gray-700">
-                        <h3 className="text-lg font-semibold text-white mb-4">Multipliers per Currency</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {CURRENCIES.map(currency => (
-                                <div key={currency}>
-                                    <label className="block text-xs font-medium text-gray-300 mb-1">{currency}</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.multipliers[currency] || 0}
-                                        onChange={(e) => handleCurrencyChange('multipliers', currency, parseFloat(e.target.value) || 0)}
-                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-blue-500 focus:outline-none"
-                                    />
-                                </div>
+                {/* Bonus Type */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Bonus Type</label>
+                        <select
+                            name="bonusType"
+                            value={formData.bonusType}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                        >
+                            {BONUS_TYPES_OPTIONS.map(type => (
+                                <option key={type} value={type}>{type}</option>
                             ))}
-                        </div>
+                        </select>
                     </div>
-                )}
 
-                {/* Maximum Bets Tab */}
-                {activeTab === 'bets' && (
-                    <div className="bg-gray-800 p-6 rounded border border-gray-700">
-                        <h3 className="text-lg font-semibold text-white mb-4">Maximum Bets per Currency</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {CURRENCIES.map(currency => (
-                                <div key={currency}>
-                                    <label className="block text-xs font-medium text-gray-300 mb-1">{currency}</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.maximumBets[currency] || 0}
-                                        onChange={(e) => handleCurrencyChange('maximumBets', currency, parseFloat(e.target.value) || 0)}
-                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-blue-500 focus:outline-none"
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Duration</label>
+                        <select
+                            name="duration"
+                            value={formData.duration}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                        >
+                            <option value="7d">7 Days</option>
+                            <option value="14d">14 Days</option>
+                            <option value="30d">30 Days</option>
+                            <option value="1y">1 Year</option>
+                        </select>
                     </div>
-                )}
+                </div>
 
-                {/* Maximum Withdraw Tab */}
-                {activeTab === 'withdraw' && (
-                    <div className="bg-gray-800 p-6 rounded border border-gray-700">
-                        <h3 className="text-lg font-semibold text-white mb-4">Maximum Withdrawal Cap per Currency</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {CURRENCIES.map(currency => (
-                                <div key={currency}>
-                                    <label className="block text-xs font-medium text-gray-300 mb-1">{currency}</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.maximumWithdraw[currency] || 0}
-                                        onChange={(e) => handleCurrencyChange('maximumWithdraw', currency, parseFloat(e.target.value) || 0)}
-                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:border-blue-500 focus:outline-none"
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                {/* Schedule - Start Date */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Schedule From (Optional)</label>
+                        <input
+                            type="datetime-local"
+                            name="scheduleFrom"
+                            value={formData.scheduleFrom}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                        />
                     </div>
-                )}
-
-                {/* Schedule Tab */}
-                {activeTab === 'schedule' && (
-                    <div className="bg-gray-800 p-6 rounded border border-gray-700 space-y-4">
-                        <h3 className="text-lg font-semibold text-white">Schedule (Optional)</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
-                                <input
-                                    type="datetime-local"
-                                    name="scheduleFrom"
-                                    value={formData.scheduleFrom}
-                                    onChange={handleBasicChange}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
-                                <input
-                                    type="datetime-local"
-                                    name="scheduleTo"
-                                    value={formData.scheduleTo}
-                                    onChange={handleBasicChange}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Schedule To (Optional)</label>
+                        <input
+                            type="datetime-local"
+                            name="scheduleTo"
+                            value={formData.scheduleTo}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                        />
                     </div>
-                )}
+                </div>
 
-                {/* Submit Button */}
+                {/* Provider */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Provider</label>
+                    <select
+                        name="provider"
+                        value={formData.provider}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                    >
+                        <option value="PRAGMATIC">PRAGMATIC</option>
+                        <option value="BETSOFT">BETSOFT</option>
+                    </select>
+                </div>
+
+                {/* Submit */}
                 <button
                     type="submit"
-                    disabled={loading || !formData.name_en.trim()}
-                    className={`w-full py-3 px-6 rounded font-semibold transition ${loading || !formData.name_en.trim()
+                    disabled={loading}
+                    className={`w-full py-3 px-6 rounded font-semibold transition ${loading
                         ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                         : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-green-500/50'
                         }`}

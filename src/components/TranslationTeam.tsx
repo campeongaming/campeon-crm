@@ -18,6 +18,7 @@ interface Translation {
 }
 
 const LANGUAGES = [
+    { code: '*', name: 'Default (*)' },
     { code: 'en', name: 'English' },
     { code: 'de', name: 'German' },
     { code: 'fr', name: 'French' },

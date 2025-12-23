@@ -4,8 +4,9 @@ API endpoints for Bonus Templates
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, Dict, Any
 from datetime import datetime
+import json as json_lib
 
 from database.database import get_db
 from database.models import BonusTemplate, BonusTranslation
@@ -64,11 +65,139 @@ def create_bonus_template(template: BonusTemplateCreate, db: Session = Depends(g
     return db_template
 
 
-@router.get("/bonus-templates", response_model=List[BonusTemplateResponse])
+@router.post("/bonus-templates/simple", status_code=status.HTTP_201_CREATED)
+def create_bonus_template_simple(payload: Dict[str, Any], db: Session = Depends(get_db)):
+    """Create a bonus template using simple JSON format (deposit form)
+
+    Accepts the simplified format:
+    {
+        "id": "DEPOSIT_...",
+        "trigger": { "type": "deposit", "duration": "7d", "schedule": {...} },
+        "config": { "cost": {...}, "multiplier": {...}, "maximumBets": {...}, ... },
+        "type": "bonus_template"
+    }
+    """
+    try:
+        template_id = payload.get("id")
+        if not template_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: id"
+            )
+
+        # Check if template with this ID already exists
+        existing = db.query(BonusTemplate).filter(
+            BonusTemplate.id == template_id).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Template with ID '{template_id}' already exists"
+            )
+
+        trigger = payload.get("trigger", {})
+        config = payload.get("config", {})
+
+        # Extract just the cap values from maximumWithdraw if they exist
+        max_withdraw = config.get("maximumWithdraw", {})
+        max_withdraw_flattened = {}
+        for curr, val in max_withdraw.items():
+            if isinstance(val, dict):
+                max_withdraw_flattened[curr] = val.get("cap", 0)
+            else:
+                max_withdraw_flattened[curr] = val
+
+        # Build the FINAL JSON that will be stored - only include what was provided
+        final_json = {
+            "id": template_id,
+            "type": "bonus_template"
+        }
+
+        # Add trigger if provided
+        if trigger:
+            trigger_obj = {}
+            if trigger.get("type"):
+                trigger_obj["type"] = trigger["type"]
+            if trigger.get("duration"):
+                trigger_obj["duration"] = trigger["duration"]
+            if trigger.get("schedule"):
+                trigger_obj["schedule"] = trigger["schedule"]
+            if trigger_obj:
+                final_json["trigger"] = trigger_obj
+
+        # Add config if provided
+        if config:
+            config_obj = {}
+            if config.get("cost"):
+                config_obj["cost"] = config["cost"]
+            if config.get("multiplier"):
+                config_obj["multiplier"] = config["multiplier"]
+            if config.get("maximumBets"):
+                config_obj["maximumBets"] = config["maximumBets"]
+            if max_withdraw_flattened:
+                config_obj["maximumWithdraw"] = max_withdraw_flattened
+            if config.get("provider"):
+                config_obj["provider"] = config["provider"]
+            if config.get("brand"):
+                config_obj["brand"] = config["brand"]
+            if config.get("type"):
+                config_obj["type"] = config["type"]
+            if config.get("extra"):
+                config_obj["extra"] = config["extra"]
+            if config_obj:
+                final_json["config"] = config_obj
+
+        # Create new template with simple format
+        db_template = BonusTemplate(
+            id=template_id,
+            trigger_name={"*": "Bonus", "en": "Bonus"},
+            trigger_description={"*": "", "en": ""},
+            trigger_type=trigger.get("type", "deposit"),
+            trigger_iterations=1,
+            trigger_duration=trigger.get("duration", "7d"),
+            minimum_amount={"*": 0},
+            percentage=0,
+            wagering_multiplier=0,
+            minimum_stake_to_wager={"*": 0},
+            maximum_stake_to_wager=config.get("maximumBets", {"*": 0}),
+            maximum_amount=config.get("cost", {"*": 0}),
+            maximum_withdraw=max_withdraw_flattened,
+            category=config.get("category", "games"),
+            provider=config.get("provider", "PRAGMATIC"),
+            brand=config.get("brand", "PRAGMATIC"),
+            bonus_type=config.get("type", "cost"),
+        )
+
+        # Handle optional schedule
+        if trigger.get("schedule"):
+            schedule = trigger["schedule"]
+            db_template.schedule_from = schedule.get("from")
+            db_template.schedule_to = schedule.get("to")
+
+        db.add(db_template)
+        db.commit()
+        db.refresh(db_template)
+
+        return {
+            "status": "created",
+            "message": f"Bonus template '{template_id}' created successfully",
+            "json_output": final_json
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get("/bonus-templates")
 def list_bonus_templates(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all bonus templates"""
     templates = db.query(BonusTemplate).offset(skip).limit(limit).all()
-    return templates
+    return [{"id": t.id, "provider": t.provider, "bonus_type": t.bonus_type, "created_at": t.created_at} for t in templates]
 
 
 @router.get("/bonus-templates/search")
@@ -124,28 +253,25 @@ def search_bonus_template(query: str, db: Session = Depends(get_db)):
     return templates
 
 
-@router.get("/bonus-templates/dates/{year}/{month}", response_model=List[BonusTemplateResponse])
+@router.get("/bonus-templates/dates/{year}/{month}")
 def get_bonuses_by_month(year: int, month: int, skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
     """Get bonus templates created in a specific month with pagination"""
     from sqlalchemy import desc, func
-    from datetime import datetime
 
     print(
         f"[DEBUG] Fetching bonuses for {year}-{month}, skip={skip}, limit={limit}")
 
     # SQLite-compatible date filtering using strftime
-    date_pattern = f"{year:04d}-{month:02d}%"
-
     templates = db.query(BonusTemplate).filter(
         func.strftime(
             '%Y-%m', BonusTemplate.created_at) == f"{year:04d}-{month:02d}"
     ).order_by(desc(BonusTemplate.created_at)).offset(skip).limit(limit).all()
 
     print(f"[DEBUG] Found {len(templates)} bonuses")
-    return templates
+    return [{"id": t.id, "provider": t.provider, "bonus_type": t.bonus_type, "created_at": t.created_at} for t in templates]
 
 
-@router.get("/bonus-templates/{template_id}", response_model=BonusTemplateResponse)
+@router.get("/bonus-templates/{template_id}")
 def get_bonus_template(template_id: str, db: Session = Depends(get_db)):
     """Get a specific bonus template"""
     template = db.query(BonusTemplate).filter(
@@ -155,7 +281,7 @@ def get_bonus_template(template_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Template '{template_id}' not found"
         )
-    return template
+    return {"id": template.id, "provider": template.provider, "bonus_type": template.bonus_type, "created_at": template.created_at}
 
 
 @router.put("/bonus-templates/{template_id}", response_model=BonusTemplateResponse)
@@ -298,15 +424,112 @@ def delete_translation(template_id: str, language: str, db: Session = Depends(ge
 
 # ============= JSON GENERATION =============
 
-@router.get("/bonus-templates/{template_id}/json", response_model=BonusJSONOutput)
+@router.get("/bonus-templates/{template_id}/json")
 def generate_template_json(template_id: str, db: Session = Depends(get_db)):
-    """Generate the final JSON output for a bonus template with all translations and currency conversions"""
+    """Generate the final JSON output for a bonus template with stored cost data and translations"""
 
-    json_output = generate_bonus_json_with_currencies(template_id, db)
-    if not json_output:
+    template = db.query(BonusTemplate).filter(
+        BonusTemplate.id == template_id
+    ).first()
+
+    if not template:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Template '{template_id}' not found"
         )
+
+    # Fetch admin config to get maximumWithdraw in proper format
+    from database.models import StableConfig
+    admin_config = db.query(StableConfig).filter(
+        StableConfig.provider == template.provider
+    ).first()
+
+    # Build maximumWithdraw in the nested format with "cap"
+    # Use stored template data if available, fallback to admin config
+    maximum_withdraw_formatted = {}
+
+    if template.maximum_withdraw:
+        stored_data = template.maximum_withdraw
+        # If stored as flat dict/JSON, convert to nested format
+        if isinstance(stored_data, dict):
+            for curr, val in stored_data.items():
+                if isinstance(val, dict):
+                    # Already nested format
+                    maximum_withdraw_formatted[curr] = val
+                else:
+                    # Flat value, wrap in cap
+                    maximum_withdraw_formatted[curr] = {"cap": val}
+    # Fallback to admin config if stored data is empty
+    elif admin_config and admin_config.maximum_withdraw:
+        # Admin stores it as list of dicts with currency and cap
+        for item in admin_config.maximum_withdraw:
+            if isinstance(item, dict):
+                currency = item.get("currency")
+                cap = item.get("cap", 0)
+                if currency:
+                    maximum_withdraw_formatted[currency] = {"cap": cap}
+
+    # Fetch translations for this template
+    translations = db.query(BonusTranslation).filter(
+        BonusTranslation.template_id == template_id
+    ).all()
+
+    # Build multilingual name and description from translations
+    trigger_name = {}
+    trigger_description = {}
+
+    for translation in translations:
+        if translation.language:
+            if translation.name:
+                trigger_name[translation.language] = translation.name
+            if translation.description:
+                trigger_description[translation.language] = translation.description
+
+    # Set "*" (default) to English or first available translation
+    if "en" in trigger_name:
+        trigger_name["*"] = trigger_name["en"]
+    elif trigger_name:
+        trigger_name["*"] = next(iter(trigger_name.values()))
+
+    if "en" in trigger_description:
+        trigger_description["*"] = trigger_description["en"]
+    elif trigger_description:
+        trigger_description["*"] = next(iter(trigger_description.values()))
+
+    # Build the full JSON from stored data
+    json_output = {
+        "id": template.id,
+        "trigger": {
+            "type": template.trigger_type,
+            "duration": template.trigger_duration,
+            "minimumAmount": template.minimum_amount,
+        },
+        "config": {
+            "cost": template.maximum_amount,
+            "multiplier": template.maximum_amount,
+            "maximumBets": template.maximum_stake_to_wager,
+            "maximumWithdraw": maximum_withdraw_formatted,
+            "provider": template.provider,
+            "brand": template.brand,
+            "type": template.bonus_type,
+            "extra": {
+                "game": "Sugar Rush"  # This should be stored, but for now using from extra
+            }
+        },
+        "type": "bonus_template"
+    }
+
+    # Add trigger name and description if they exist
+    if trigger_name:
+        json_output["trigger"]["name"] = trigger_name
+    if trigger_description:
+        json_output["trigger"]["description"] = trigger_description
+
+    # Add schedule if it exists
+    if template.schedule_from and template.schedule_to:
+        json_output["trigger"]["schedule"] = {
+            "from": template.schedule_from,
+            "to": template.schedule_to
+        }
 
     return json_output
