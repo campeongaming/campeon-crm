@@ -20,7 +20,7 @@ interface FormData {
     spinCount: string;
     wagerAmount: string;
     stageNumber: string;
-    linkedBonusId: string;
+    linkedBonusIds: string[]; // Array for COMBO bonuses
 
     // Schedule (optional)
     scheduleType: string;
@@ -42,7 +42,7 @@ export default function UnifiedBonusForm() {
         spinCount: '',
         wagerAmount: '',
         stageNumber: '',
-        linkedBonusId: '',
+        linkedBonusIds: [''],
         scheduleType: 'period',
         scheduleFrom: '',
         scheduleTo: '',
@@ -64,7 +64,7 @@ export default function UnifiedBonusForm() {
             spinCount: '',
             wagerAmount: '',
             stageNumber: '',
-            linkedBonusId: '',
+            linkedBonusIds: [''],
         }));
     };
 
@@ -81,6 +81,26 @@ export default function UnifiedBonusForm() {
                 setFormData(updated);
             }
         }
+    };
+
+    const handleLinkedBonusChange = (index: number, value: string) => {
+        const updated = { ...formData };
+        updated.linkedBonusIds[index] = value;
+        setFormData(updated);
+    };
+
+    const addLinkedBonus = () => {
+        setFormData(prev => ({
+            ...prev,
+            linkedBonusIds: [...prev.linkedBonusIds, ''],
+        }));
+    };
+
+    const removeLinkedBonus = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            linkedBonusIds: prev.linkedBonusIds.filter((_, i) => i !== index),
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -144,6 +164,7 @@ export default function UnifiedBonusForm() {
                     payload.percentage = 100;
                     payload.wagering_multiplier = 15;
                     payload.maximum_amount = { '*': 300 };
+                    payload.linked_bonus_ids = formData.linkedBonusIds.filter(id => id.trim() !== '');
                     break;
 
                 case 'CASHBACK':
@@ -187,7 +208,7 @@ export default function UnifiedBonusForm() {
                 spinCount: '',
                 wagerAmount: '',
                 stageNumber: '',
-                linkedBonusId: '',
+                linkedBonusIds: [''],
                 scheduleType: 'period',
                 scheduleFrom: '',
                 scheduleTo: '',
@@ -352,15 +373,36 @@ export default function UnifiedBonusForm() {
                                 {/* COMBO */}
                                 {formData.bonusType === 'COMBO' && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Linked Bonus ID *</label>
-                                        <input
-                                            type="text"
-                                            name="linkedBonusId"
-                                            value={formData.linkedBonusId}
-                                            onChange={handleInputChange}
-                                            placeholder="e.g., DEPOSIT_25_100_2025-12-22"
-                                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
-                                        />
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Linked Bonuses</label>
+                                        <div className="space-y-3">
+                                            {formData.linkedBonusIds.map((bonusId, index) => (
+                                                <div key={index} className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={bonusId}
+                                                        onChange={(e) => handleLinkedBonusChange(index, e.target.value)}
+                                                        placeholder="e.g., DEPOSIT_25_100_2025-12-22"
+                                                        className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                                                    />
+                                                    {formData.linkedBonusIds.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeLinkedBonus(index)}
+                                                            className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded transition"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={addLinkedBonus}
+                                            className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition"
+                                        >
+                                            + Add Bonus
+                                        </button>
                                     </div>
                                 )}
 
