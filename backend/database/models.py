@@ -63,6 +63,22 @@ class BonusTemplate(Base):
     # Structure: {"*": 25, "EUR": 25, "USD": 25, "GBP": 25, ...}
     minimum_amount = Column(JSON)
 
+    # TRIGGER - Restricted countries (optional array)
+    # Structure: ["BR", "AU", "NZ", ...]
+    restricted_countries = Column(JSON, default=[])
+
+    # CONFIG - Cost per FS (per currency)
+    # Structure: {"EUR": 0.12, "USD": 0.12, ...}
+    cost = Column(JSON)
+
+    # CONFIG - Multiplier (per currency)
+    # Structure: {"EUR": 1.44, "USD": 1.44, ...}
+    multiplier = Column(JSON)
+
+    # CONFIG - Maximum bets per currency
+    # Structure: {"EUR": 600, "USD": 600, ...}
+    maximum_bets = Column(JSON)
+
     # CONFIG - Betting & Wagering
     percentage = Column(Float)  # 200 for 200% bonus
     wagering_multiplier = Column(Float)  # 15 for x15 wager requirement
@@ -88,6 +104,18 @@ class BonusTemplate(Base):
     provider = Column(String(50))  # "SYSTEM", provider name
     brand = Column(String(50))  # "SYSTEM", brand name
     bonus_type = Column(String(50))  # "cash", "bonus", "free_spins"
+
+    # CONFIG - Extra (e.g., game name)
+    # Structure: {"game": "Game Name"}
+    config_extra = Column(JSON)
+
+    # CONFIG - Game/expiry info
+    game = Column(String(255))  # Game name for free spins
+    expiry = Column(String(20), default="7d")  # "7d", "24h", etc.
+
+    # CONFIG - Withdrawal
+    # "cash", "free_bet", "cashback"
+    config_type = Column(String(50), default="free_bet")
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow,

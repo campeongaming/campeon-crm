@@ -43,6 +43,10 @@ def create_bonus_template(template: BonusTemplateCreate, db: Session = Depends(g
         trigger_name=template.trigger_name,
         trigger_description=template.trigger_description,
         minimum_amount=template.minimum_amount,
+        restricted_countries=template.restricted_countries,
+        cost=template.cost,
+        multiplier=template.multiplier,
+        maximum_bets=template.maximum_bets,
         percentage=template.percentage,
         wagering_multiplier=template.wagering_multiplier,
         minimum_stake_to_wager=template.minimum_stake_to_wager,
@@ -57,6 +61,10 @@ def create_bonus_template(template: BonusTemplateCreate, db: Session = Depends(g
         provider=template.provider,
         brand=template.brand,
         bonus_type=template.bonus_type,
+        config_type=template.config_type,
+        game=template.game,
+        expiry=template.expiry,
+        config_extra=template.config_extra,
     )
 
     db.add(db_template)
@@ -288,7 +296,7 @@ def get_bonus_template(template_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Template '{template_id}' not found"
         )
-    return {"id": template.id, "provider": template.provider, "bonus_type": template.bonus_type, "created_at": template.created_at}
+    return template
 
 
 @router.put("/bonus-templates/{template_id}", response_model=BonusTemplateResponse)

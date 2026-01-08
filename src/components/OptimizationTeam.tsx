@@ -47,6 +47,7 @@ export default function OptimizationTeam() {
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
     const [scrollTop, setScrollTop] = useState(0);
 
+    // Fetch bonuses when month/year changes
     useEffect(() => {
         fetchBonusesForMonth();
     }, [selectedYear, selectedMonth]);
@@ -116,22 +117,132 @@ export default function OptimizationTeam() {
         setMessage('');
     };
 
-    const generateJSON = async () => {
+    const generateFromBonusDetails = async () => {
         if (!selectedBonusId) {
-            setMessage('❌ Please search for a bonus first');
+            setMessage('❌ Please search for or select a bonus first');
             return;
         }
 
         setLoading(true);
+        setMessage('');
         try {
+            // Fetch bonus details from database
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/${selectedBonusId}/json`
+                `http://localhost:8000/api/bonus-templates/${selectedBonusId}`
             );
-            setJsonOutput(JSON.stringify(response.data, null, 2));
-            setMessage('✅ JSON generated successfully!');
-        } catch (error) {
-            console.error('Error generating JSON:', error);
-            setMessage('❌ Error generating JSON');
+
+            const bonus = response.data;
+            console.log('Fetched bonus:', bonus); // Debug
+
+            // Reconstruct complete JSON structure with exact field ordering (matching your config.json)
+            const bonusJson: any = {
+                id: bonus.id,
+            };
+
+            // Add schedule if present
+            if (bonus.schedule_from && bonus.schedule_to) {
+                bonusJson.schedule = {
+                    type: bonus.schedule_type || 'period',
+                    from: bonus.schedule_from,
+                    to: bonus.schedule_to,
+                };
+            }
+
+            // Build trigger section with exact field order
+            bonusJson.trigger = {};
+
+            // Name (multilingual)
+            if (bonus.trigger_name) {
+                bonusJson.trigger.name = bonus.trigger_name;
+            }
+
+            // Minimum amount (per currency)
+            if (bonus.minimum_amount) {
+                bonusJson.trigger.minimumAmount = bonus.minimum_amount;
+            }
+
+            // Iterations
+            if (bonus.trigger_iterations && bonus.trigger_iterations > 0) {
+                bonusJson.trigger.iterations = bonus.trigger_iterations;
+            }
+
+            // Type, duration (required)
+            bonusJson.trigger.type = bonus.bonus_type || 'deposit';
+            bonusJson.trigger.duration = bonus.trigger_duration || '7d';
+
+            // Restricted countries (optional array)
+            if (bonus.restricted_countries && Array.isArray(bonus.restricted_countries) && bonus.restricted_countries.length > 0) {
+                bonusJson.trigger.restrictedCountries = bonus.restricted_countries;
+            }
+
+            // Build config section with exact field order
+            bonusJson.config = {};
+
+            // Cost (per currency)
+            if (bonus.cost) {
+                bonusJson.config.cost = bonus.cost;
+            }
+
+            // Multiplier (per currency)
+            if (bonus.multiplier) {
+                bonusJson.config.multiplier = bonus.multiplier;
+            }
+
+            // Maximum bets (per currency)
+            if (bonus.maximum_bets) {
+                bonusJson.config.maximumBets = bonus.maximum_bets;
+            }
+
+            // Provider, brand, type
+            bonusJson.config.provider = bonus.provider || 'PRAGMATIC';
+            bonusJson.config.brand = bonus.brand || 'PRAGMATIC';
+            bonusJson.config.type = bonus.config_type || 'free_bet';
+            bonusJson.config.withdrawActive = bonus.withdraw_active !== undefined ? bonus.withdraw_active : false;
+            bonusJson.config.category = bonus.category || 'games';
+
+            // Maximum withdraw (per currency with cap)
+            if (bonus.maximum_withdraw) {
+                const maxWithdrawObjects: Record<string, { cap: number }> = {};
+                Object.entries(bonus.maximum_withdraw).forEach(([curr, val]: any) => {
+                    maxWithdrawObjects[curr] = { cap: typeof val === 'object' ? val.cap : val };
+                });
+                bonusJson.config.maximumWithdraw = maxWithdrawObjects;
+            }
+
+            // Extra (game info)
+            bonusJson.config.extra = bonus.config_extra || { game: bonus.game };
+            bonusJson.config.expiry = bonus.expiry || '7d';
+
+            // Add type
+            bonusJson.type = 'bonus_template';
+
+            // Display in editor
+            const jsonString = JSON.stringify(bonusJson, null, 2);
+            setJsonOutput(jsonString);
+
+            // Validate
+            const errors = validateJSON(jsonString);
+            setValidationErrors(errors);
+
+            if (errors.length === 0) {
+                setMessage('✅ JSON generated and validated successfully!');
+            }
+        } catch (error: any) {
+            let errorMessage = 'Failed to generate JSON';
+
+            // Handle Pydantic validation error (array of errors)
+            if (error.response?.data?.detail && Array.isArray(error.response.data.detail)) {
+                errorMessage = error.response.data.detail
+                    .map((err: any) => `${err.loc?.join('.')}: ${err.msg}`)
+                    .join(' | ');
+            } else if (error.response?.data?.detail) {
+                errorMessage = String(error.response.data.detail);
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            setMessage(`❌ ${errorMessage}`);
+            setValidationErrors([]);
         } finally {
             setLoading(false);
         }
@@ -299,11 +410,11 @@ export default function OptimizationTeam() {
             {/* Generate JSON Button */}
             {selectedBonusId && (
                 <button
-                    onClick={generateJSON}
+                    onClick={generateFromBonusDetails}
                     disabled={loading}
-                    className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 text-white font-semibold rounded transition-colors"
+                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 text-white font-semibold rounded transition-colors"
                 >
-                    {loading ? 'Generating JSON...' : '📄 Generate JSON'}
+                    {loading ? 'Generating JSON...' : '✨ Generate JSON from Bonus Details'}
                 </button>
             )}
 

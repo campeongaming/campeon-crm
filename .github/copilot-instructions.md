@@ -6,98 +6,175 @@
 
 - **Frontend**: Next.js 14 (React 18, TypeScript, Tailwind CSS) on port 3001
 - **Backend**: FastAPI + SQLAlchemy + SQLite on port 8000
-- **Core Domain**: Bonus template creation, translation management, and JSON schema generation
+- **Core Domain**: Bonus template creation, pricing table management, and multi-currency JSON generation
 
 ### Key Design Decisions
 
-1. **7 Bonus Types**: DEPOSIT, RELOAD, FSDROP, WAGER, SEQ, COMBO, CASHBACK with auto-ID generation patterns
-2. **Multilingual JSON Storage**: All dynamic text stored as `{"*": "default", "en": "...", "de": "..."}` dictionaries
-3. **Multi-Currency Pricing Tables**: Stored as structured JSON arrays in database with 21+ supported currencies
-4. **Optional Schedules**: Bonuses don't require schedule dates—only included in payload if both `schedule_from` and `schedule_to` are filled
-5. **Tab-Based UI**: Single page (`src/app/page.tsx`) with 5 tabs instead of multiple routes
+1. **Admin-Driven Pricing**: All bonus pricing stored in `StableConfig` per provider (PRAGMATIC, BETSOFT)
+   - Tables contain 21+ currencies with mapped values
+   - Frontend searches tables by EUR value and loads ALL currency values
+2. **Tab-Based Single Page**: `src/app/page.tsx` routes to 5 tabs (Admin, Create, Browse, Translation, Optimization)
+3. **Multi-Currency Lookup Pattern**: Search pricing tables at JSON build time, NOT during form input
+   - Use `Math.abs(table.values.EUR - inputValue) < 0.001` for floating-point tolerance
+   - Always use table's EUR value for `"*"` (fallback) to avoid precision errors
+4. **Multilingual JSON Storage**: `{"*": eurValue, "EUR": val, "USD": val, ...}` structure
+5. **Optional Schedules**: Only included if both `schedule_from` AND `schedule_to` provided
 
 ---
 
 ## 🔧 Critical Developer Workflows
 
-### Start Development (Both Required)
+### Start Development (Both Terminals Required)
 
 ```bash
-# Terminal 1 - Frontend (auto-reloads)
-cd c:\Users\GiorgosKorifidis\Downloads\CAMPEON CRM PROJECT
-npm run dev  # Runs on localhost:3001 (port 3000 if available)
+# Terminal 1 - Frontend
+cd "C:\Users\GiorgosKorifidis\Downloads\CAMPEON CRM PROJECT"
+npm run dev
 
-# Terminal 2 - Backend (auto-reloads with --reload flag)
+# Terminal 2 - Backend
 cd backend
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Database Reset
 ```bash
-# Delete SQLite file to recreate empty schema
 rm backend/casino_crm.db
-# Restart backend—schema auto-initializes via init_db() in lifespan event
+# Restart backend - schema auto-initializes via init_db() in lifespan
 ```
 
-### API Testing
-- **Swagger UI**: http://localhost:8000/docs (auto-generated from FastAPI)
-- **Test direct**: Use PowerShell `Invoke-WebRequest` with `-Uri` for Windows testing
+### Common Testing
+- **Swagger API Docs**: http://localhost:8000/docs
+- **Admin Panel**: http://localhost:3000 or 3001
+- **Query Admin Config**: `GET /api/stable-config/PRAGMATIC`
 
 ---
 
 ## 📐 Project-Specific Patterns
 
-### Frontend API Calls
+### Pricing Table Lookup (Critical Pattern)
 
-**Always use `API_ENDPOINTS` from `src/lib/api-config.ts`**:
+When a user enters a cost value (e.g., EUR=0.12), find the matching table and load ALL currency values:
+
 ```typescript
-import { API_ENDPOINTS } from '@/lib/api-config';
-const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/dates/2025/12`);
-```
-
-Do NOT use relative URLs (`/api/...`) because Next.js dev server doesn't proxy to FastAPI.
-
-### Optional Fields in Forms
-
-When adding optional fields to bonus creation:
-1. Make the input optional (remove `required` attribute)
-2. **In frontend**: Only include field in payload if not empty
-3. **In backend**: Mark Pydantic field as `Optional[type] = None`
-4. **Example**: Schedule fields - only added to payload if both `schedule_from` AND `schedule_to` are provided
-
-### Bonus ID Generation
-
-- **Pattern**: Type-specific, deterministic format (e.g., `DEPOSIT_25_200_2025-12-22`)
-- **Trigger**: Auto-generates in `BonusWizard.tsx` as user fills type-specific fields
-- **Location**: `src/lib/bonusConfig.ts` contains all 7 types' `generateBonusId()` logic
-- **Database**: Enforced as unique with conflict error if duplicate attempted
-
-### Multi-Language JSON Fields
-
-All text fields use structure:
-```json
-{
-  "*": "English default",
-  "en": "English",
-  "de": "German",
-  "fr": "French",
-  "es": "Spanish",
-  "it": "Italian",
-  "pt": "Portuguese"
+const buildCurrencyMap = (eurValue: number, fieldName: 'cost' | 'minimum_amount' | 'maximum_withdraw') => {
+  if (fieldName === 'cost' && adminConfig?.cost) {
+    const tolerance = 0.001;
+    for (const table of adminConfig.cost) {
+      // IMPORTANT: Use Math.abs() for floating point safety
+      if (Math.abs(table.values.EUR - eurValue) < tolerance) {
+        // Use table's EUR for "*" to avoid precision errors like 0.09999
+        return { '*': table.values.EUR, ...table.values };
+      }
+    }
+  }
+  // Fallback...
 }
 ```
 
-Store in database as JSON, render in UI with language selector.
+**Key Points**:
+- ✅ Lookup happens at JSON build time (in `handleSave`), NOT during form input
+- ✅ Use tolerance comparison for floating point numbers
+- ✅ Always use `table.values.EUR` for the `"*"` fallback
+- ❌ Don't use state/async for lookups - search inline at point of use
+
+### Multi-Currency Structure
+
+All numeric fields follow this pattern:
+
+```json
+{
+  "*": 0.12,        // EUR value (fallback)
+  "EUR": 0.12,
+  "USD": 0.12,
+  "GBP": 0.1,
+  "NOK": 1.2,
+  ...
+}
+```
+
+Frontend maps: `CURRENCIES = ['EUR', 'USD', 'CAD', ..., 'UZS']` (21 total)
+
+### API Contract for Pricing Tables
+
+**GET /api/stable-config/{provider}** returns:
+
+```json
+{
+  "provider": "PRAGMATIC",
+  "cost": [
+    { "id": "1", "name": "Table 1", "values": { "EUR": 0.1, "USD": 0.1, ... } },
+    { "id": "2", "name": "Table 2", "values": { "EUR": 0.12, "USD": 0.12, ... } }
+  ],
+  "maximum_withdraw": [...],
+  "minimum_amount": [...]
+}
+```
+
+**Backend**: Tables are **arrays** of objects, NOT single objects. Always access with `[0]` or loop.
+
+### AwardFreeSpins Component Flow
+
+1. **User enters cost EUR**: 0.12 → Fetches admin config on mount
+2. **User fills form fields**: Trigger name, game, etc.
+3. **User submits**: `handleSave()` calls `buildCurrencyMap(0.12, 'cost')`
+4. **Lookup executes**: Searches `adminConfig.cost` array for EUR ≈ 0.12 → finds Table 2
+5. **JSON built**: Uses all 21 currency values from Table 2
+6. **POST to /api/bonus-templates** with complete payload
+
+### Database Schema Key Points
+
+- **BonusTemplate.id**: String (primary key), human-readable title
+- **JSON columns**: All multi-currency/multilingual data stored as JSON
+  - `cost`, `multiplier`, `maximum_bets`, `maximum_withdraw`: `Dict[str, float]`
+  - `trigger_name`, `trigger_description`: `Dict[str, str]` (localization)
+  - `restricted_countries`: `List[str]`
+- **StableConfig.cost/maximum_withdraw**: JSON arrays of `[{id, name, values: {currency: value}}]`
 
 ---
 
-## 🔗 Component Communication Patterns
+## 🚨 Common Pitfalls & Fixes
 
-### Bonus Creation Flow
-1. **BonusWizard** (single-page form) → emits `onBonusCreated` event with generated ID
-2. **SimpleBonusForm** receives event → auto-fills the ID field
-3. User submits → POST to `/api/bonus-templates`
-4. Success → BonusBrowser can now browse/search the newly created bonus
+| Problem | Solution |
+|---------|----------|
+| Floating point: 0.1 stored as 0.09999... | Use `Math.abs(a - b) < 0.001` tolerance |
+| `"*": 0.09999` in generated JSON | Use `table.values.EUR` for `"*"`, not input parameter |
+| Missing currency values in JSON | Lookup at build time, not in async state update |
+| Table not found warning | Check if `adminConfig` is loaded before `buildCurrencyMap` runs |
+| POST returns incomplete data | GET endpoint now returns full object (was returning only 4 fields) |
+
+---
+
+## 🔗 Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `src/app/page.tsx` | Tab router (Admin, Create, Browse, Translation, Optimization) |
+| `src/components/AwardFreeSpins.tsx` | Free Spins form with pricing table lookup |
+| `src/components/AdminPanel.tsx` | Manage pricing tables per provider |
+| `backend/api/bonus_templates.py` | Bonus CRUD endpoints |
+| `backend/database/models.py` | BonusTemplate & StableConfig schemas |
+| `backend/api/schemas.py` | Pydantic models for API validation |
+
+---
+
+## 💡 When Adding Features
+
+1. **New optional field**: Make `Optional` in Pydantic, exclude from payload if empty
+2. **New pricing table field**: Add to `StableConfig` model, create migration
+3. **New bonus type**: Add ID generation logic to `bonusConfig.ts`, update form UI
+4. **New currency**: Add to `CURRENCIES` array in components, update admin pricing
+5. **Multilingual text**: Use `Dict[str, str]` format with `"*"` + all locales
+
+---
+
+## 🧪 Testing Checklist
+
+✅ Enter cost EUR=0.12 → Should find Table 2 with all 21 currencies  
+✅ Enter cost EUR=0.4 → Should find Table 6  
+✅ Generated JSON has exact table values, not defaults  
+✅ `"*"` value = EUR value (e.g., 0.12, not 0.09999)  
+✅ Both terminals running (frontend + backend)  
+✅ Pricing table saves in Admin Panel before creating bonus
 
 ### CORS Configuration
 

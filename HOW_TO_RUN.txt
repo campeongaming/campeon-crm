@@ -492,3 +492,143 @@ When ready, create a new "Create Bonus" tab that:
 4. Submits to appropriate API endpoint
 
 ═══════════════════════════════════════════════════════════════════════════════
+
+You are helping me build a “Bonus JSON Generator” app.
+
+GOAL
+A user selects a BONUS TYPE, fills a small set of required inputs, and the app generates the correct JSON config in the correct format for that bonus type. The generator must be template-driven and schema-aware, based on patterns found across multiple bonus JSON files.
+
+BIG PICTURE (FIRST THINGS FIRST)
+All bonus JSONs belong to the same overall “family” with a shared top-level skeleton. The generator must:
+1. Identify the “family skeleton” (fields always present),
+2. Identify “format branches” (fields that differ based on trigger type and reward type),
+3. Enforce required fields + optional fields per branch,
+4. Fill defaults consistently (currency “*” fallbacks, expiry/duration defaults, etc.),
+5. Output valid JSON that matches the exact structure expected by our system.
+
+TOP-LEVEL JSON SKELETON (ALMOST ALWAYS PRESENT)
+The generated JSON should follow this structure:
+{
+  "id": string,                    // required: human-readable unique promo id/title
+  "trigger": { ... },              // required: qualification logic (varies by type)
+  "config": { ... },               // required: reward mechanics (varies by type)
+  "type": "bonus_template"         // usually required: discriminator
+  // "schedule": { ... }            // optional: time-windowed promos only
+}
+
+KEY CONCEPTS / MAIN “SWITCHES”
+The JSON format is determined primarily by:
+A. trigger.type  (deposit | external | open | manual)
+B. config.type   (cash | free_bet | cashback-like if present)
+C. config.category (games | live_casino | sports_book)
+D. optional top-level schedule (period window)
+
+Therefore: implement the generator as a set of templates keyed by:
+bonusFamily = (trigger.type, config.type, config.category, schedulePresent?)
+
+BRANCH 1: DEPOSIT-TRIGGERED CASH RELOAD (classic reload/package)
+trigger:
+- required: type="deposit"
+- required: duration (e.g., "7d")
+- required: minimumAmount (number or per-currency map, depending on your system)
+- often required: iterations, minimumDepositCount, segments (Fast Track segment IDs)
+- optional: allowedCountries / restrictedCountries
+config:
+- required: type="cash"
+- required: category="games" OR "live_casino"
+- required: percentage, wageringMultiplier
+- required: maximumAmount (per currency or single number depending on rules)
+- required: minimumStakeToWager, maximumStakeToWager
+- required: includeAmountOnTargetWagerCalculation, capCalculationAmountToMaximumBonus, compensateOverspending
+- usually: withdrawActive=false
+- required/typical: provider="SYSTEM", brand="SYSTEM"
+- optional but common: extra.proportions (large mapping of game/category weights)
+
+Optional top-level:
+- schedule: include when promo is time-boxed (schedule.type="period", from/to timestamps, optional timezone)
+
+BRANCH 2: EXTERNAL-TRIGGERED FREE SPINS / FREE BET (drops, wager missions, etc.)
+trigger:
+- required: type="external"
+- required: duration (e.g., "1d", "7d")
+- required: name (translation map with "*" default and localized keys like "GBP_en", "EUR_pt", etc.)
+- optional: description
+- optional: minimumLossAmount (common in cashback-like external triggers)
+Optional top-level:
+- schedule present if it’s a limited-time campaign (period from/to)
+
+config:
+- required: type="free_bet" (used for “free spins/free bet style” rewards)
+- required: category: "games" (most cases) or "sports_book" (sports freebet)
+- required: provider + brand (e.g., PRAGMATIC for casino, ALTENAR_V2 for sportsbook)
+- required: cost (currency map, often includes "*" fallback)
+- required: multiplier (currency map)
+- required: maximumBets (currency map)
+- required: expiry (e.g., "2d", "7d")
+- required: maximumWithdraw (either cap-only or {cap, multiplier} per currency)
+- usually: withdrawActive=false
+- config.extra differs by subtype:
+  - for casino FS: extra.game = "Game Name"
+  - for sportsbook freebet: extra.planId = "..."
+So: choose extra.* fields based on category/provider subtype.
+
+BRANCH 3: OPEN-TRIGGERED CHAINED BONUS (combo step 2 depends on step 1)
+trigger:
+- required: type="open"
+- required: ids: [string, ...]  // references another promo’s id(s)
+- required: duration
+- optional: minimumAmount (currency map)
+- required: name translation map (can be "*" only OR full localized set)
+config:
+- usually type="free_bet" (often FS as step 2)
+- same required fields as Branch 2 (cost/multiplier/maximumBets/expiry/maximumWithdraw/provider/brand/category)
+- extra.game or extra.planId same rules as above
+
+BRANCH 4: MANUAL TRIGGERED (if used)
+trigger:
+- required: type="manual"
+- required: duration and/or name (depending on existing patterns)
+config:
+- depends on whether reward is cash or free_bet; reuse Branch 1 or 2 config schemas accordingly.
+
+BRANCH 5: CASHBACK (distinct family; may not be bonus_template)
+Some cashback JSONs differ: may include created_at/updated_at and have:
+config: percentage, maximumCashback, withdrawActive=true, restrictedCountries, etc.
+Implement this as a separate template family if needed (and don’t force "type":"bonus_template" if the existing examples don’t have it).
+
+CURRENCY & LOCALIZATION RULES (IMPORTANT)
+- Many numeric fields are per-currency maps (EUR, USD, GBP, NOK, etc.) and sometimes "*" as default.
+- trigger.name is a localization map:
+  - always include "*" as fallback
+  - include the locales we support (en, de, fi, no, it, fr, es, pt, plus currency-language variants like GBP_en, EUR_pt, etc.) depending on bonus type preset.
+- Ensure currency sets may vary by promo; generator should allow selecting “currency set presets” (EU set, full global set) instead of hardcoding one.
+
+IMPLEMENTATION REQUIREMENTS
+1. Create a “BonusType” selection UI (dropdown) mapped to the template branches above.
+2. For each BonusType, define:
+   - Required inputs (minimal form)
+   - Optional inputs (advanced)
+   - Defaults (duration, expiry, withdrawActive, provider/brand if fixed)
+3. Build a template engine:
+   - Start with skeleton
+   - Merge trigger template + config template
+   - Conditionally attach schedule if selected
+   - Validate required fields before JSON output
+4. Output pretty-printed JSON with stable key ordering.
+
+REQUIRED USER INPUTS (MINIMUM FOR EACH TYPE)
+- Always: id
+- If schedule is enabled: from, to, timezone optional
+- Trigger fields based on trigger.type (deposit/external/open/manual)
+- Config fields based on config.type and category:
+  - cash: percentage, max amount, wageringMultiplier, min/max stake, segments (if required)
+  - free_bet: provider, brand, category, cost/multiplier/maximumBets/expiry/maximumWithdraw, extra.game or extra.planId
+
+DELIVERABLE
+Implement the generator with:
+- A set of TypeScript interfaces/types for the schemas
+- A template map (object) from BonusType -> template builder function
+- Runtime validation (zod or custom) per BonusType
+- A single function `generateBonusJson(formState): BonusJson` that returns the final JSON.
+
+Start by implementing the schema/types and the template builder functions first, then wire the UI form to those builders.

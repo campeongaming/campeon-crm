@@ -42,32 +42,44 @@ class BonusTemplateCreate(BaseModel):
 
     # Trigger
     # {"*": "default", "en": "...", "de": "...", ...}
-    trigger_name: Dict[str, str]
-    trigger_description: Dict[str, str]
-    trigger_type: str
-    trigger_iterations: int
-    trigger_duration: str
-    minimum_amount: Dict[str, float]  # {"*": 25, "EUR": 25, ...}
+    trigger_name: Optional[Dict[str, str]] = None
+    trigger_description: Optional[Dict[str, str]] = None
+    trigger_type: Optional[str] = None
+    trigger_iterations: Optional[int] = None
+    trigger_duration: Optional[str] = None
+    minimum_amount: Optional[Dict[str, float]
+                             ] = None  # {"*": 25, "EUR": 25, ...}
+    restricted_countries: Optional[List[str]] = None  # ["BR", "AU", "NZ", ...]
 
-    # Config
-    percentage: float
-    wagering_multiplier: float
-    minimum_stake_to_wager: Dict[str, float]
-    maximum_stake_to_wager: Dict[str, float]
-    maximum_amount: Dict[str, float]
-    maximum_withdraw: Dict[str, float]
+    # Config - Cost and multiplier per currency
+    cost: Optional[Dict[str, float]] = None  # {"EUR": 0.12, "USD": 0.12, ...}
+    multiplier: Optional[Dict[str, float]] = None  # {"EUR": 1.44, ...}
+    # {"EUR": 600, "USD": 600, ...}
+    maximum_bets: Optional[Dict[str, float]] = None
 
-    # Flags
+    # Config - Betting
+    percentage: Optional[float] = None
+    wagering_multiplier: Optional[float] = None
+    minimum_stake_to_wager: Optional[Dict[str, float]] = None
+    maximum_stake_to_wager: Optional[Dict[str, float]] = None
+    maximum_amount: Optional[Dict[str, float]] = None
+    maximum_withdraw: Optional[Dict[str, float]] = None
+
+    # Config - Flags
     include_amount_on_target_wager: bool = True
     cap_calculation_to_maximum: bool = False
     compensate_overspending: bool = True
     withdraw_active: bool = False
 
-    # Categories
-    category: str
-    provider: str
-    brand: str
-    bonus_type: str
+    # Config - Categories
+    category: Optional[str] = None
+    provider: Optional[str] = None
+    brand: Optional[str] = None
+    bonus_type: Optional[str] = None
+    config_type: str = "free_bet"
+    game: Optional[str] = None
+    expiry: str = "7d"
+    config_extra: Optional[Dict[str, str]] = None
 
 
 class BonusTemplateResponse(BonusTemplateCreate):
