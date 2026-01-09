@@ -40,6 +40,8 @@ def save_stable_config(config: StableConfigCreate, db: Session = Depends(get_db)
             existing_config.minimum_stake_to_wager = config_data['minimum_stake_to_wager']
             existing_config.maximum_stake_to_wager = config_data['maximum_stake_to_wager']
             existing_config.maximum_withdraw = config_data['maximum_withdraw']
+            existing_config.casino_proportions = config_data['casino_proportions']
+            existing_config.live_casino_proportions = config_data['live_casino_proportions']
             db.commit()
             db.refresh(existing_config)
             return existing_config
@@ -52,7 +54,9 @@ def save_stable_config(config: StableConfigCreate, db: Session = Depends(get_db)
                 minimum_amount=config_data['minimum_amount'],
                 minimum_stake_to_wager=config_data['minimum_stake_to_wager'],
                 maximum_stake_to_wager=config_data['maximum_stake_to_wager'],
-                maximum_withdraw=config_data['maximum_withdraw']
+                maximum_withdraw=config_data['maximum_withdraw'],
+                casino_proportions=config_data['casino_proportions'],
+                live_casino_proportions=config_data['live_casino_proportions']
             )
             db.add(new_config)
             db.commit()

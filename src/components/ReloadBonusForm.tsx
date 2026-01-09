@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 interface CurrencyTable {
@@ -13,17 +13,21 @@ interface AdminConfig {
     minimum_amount?: CurrencyTable[];
     cost?: CurrencyTable[];
     maximum_withdraw?: CurrencyTable[];
+    minimum_stake_to_wager?: CurrencyTable[];
+    maximum_stake_to_wager?: CurrencyTable[];
+    maximum_amount?: CurrencyTable[];
+    casino_proportions?: CurrencyTable[];
+    live_casino_proportions?: CurrencyTable[];
 }
 
 const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN', 'GBP', 'PLN', 'PEN', 'ZAR', 'CHF', 'NGN', 'JPY', 'AZN', 'TRY', 'KZT', 'RUB', 'UZS'];
 const SUPPORTED_LOCALES = ['en', 'de', 'fi', 'no', 'pt', 'fr', 'es', 'it', 'pl', 'ru', 'et'];
 
-export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => void }) {
+export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () => void }) {
     // ============ STATE ============
-    const [provider, setProvider] = useState('PRAGMATIC');
+    const [provider, setProvider] = useState('SYSTEM');
     const [adminConfig, setAdminConfig] = useState<AdminConfig | null>(null);
     const [loadingAdmin, setLoadingAdmin] = useState(false);
-    const [matchedCostTable, setMatchedCostTable] = useState<Record<string, number> | null>(null);
 
     // Basic info
     const [gameId, setGameId] = useState('');
@@ -33,183 +37,91 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
     const [scheduleFrom, setScheduleFrom] = useState('');
     const [scheduleTo, setScheduleTo] = useState('');
 
+    // Segments (optional)
+    const [segments, setSegments] = useState<string[]>([]);
+    const [segmentInput, setSegmentInput] = useState('');
+
     // Trigger section
-    const [minimumAmountEUR, setMinimumAmountEUR] = useState(50);
+    const [minimumAmountEUR, setMinimumAmountEUR] = useState(25);
     const [iterations, setIterations] = useState(1);
     const [iterationsOptional, setIterationsOptional] = useState(false);
     const [triggerType, setTriggerType] = useState('deposit');
     const [duration, setDuration] = useState('7d');
     const [restrictedCountries, setRestrictedCountries] = useState<string[]>([]);
     const [countryInput, setCountryInput] = useState('');
-    const [segments, setSegments] = useState<string[]>([]);
-    const [segmentInput, setSegmentInput] = useState('');
 
     // Config section
-    const [costEUR, setCostEUR] = useState(0.12);
-    const [maximumBets, setMaximumBets] = useState(600);
-    const [brand, setBrand] = useState('PRAGMATIC');
-    const [configType, setConfigType] = useState('free_bet');
-    const [withdrawActive, setWithdrawActive] = useState(false);
+    const [percentage, setPercentage] = useState(150);
+    const [wageringMultiplier, setWageringMultiplier] = useState(20);
     const [category, setCategory] = useState('games');
-    const [maximumWithdrawEUR, setMaximumWithdrawEUR] = useState(100);
-    const [game, setGame] = useState('');
-    const [expiry, setExpiry] = useState('7d');
     const [includeAmount, setIncludeAmount] = useState(true);
     const [capCalculation, setCapCalculation] = useState(false);
-    const [compensateOverspend, setCompensateOverspend] = useState(true);
+    const [expiry, setExpiry] = useState('7d');
+    const [proportionsType, setProportionsType] = useState('casino');
 
-    // Up To feature - min FS amount per currency
-    const [upTo, setUpTo] = useState(false);
-    const [minFsAmount, setMinFsAmount] = useState<Record<string, number>>(() =>
-        Object.fromEntries(CURRENCIES.map(c => [c, 50]))
-    );
+    // Selected tables from admin
+    const [selectedMinStakeTable, setSelectedMinStakeTable] = useState<Record<string, number> | null>(null);
+    const [selectedMaxStakeTable, setSelectedMaxStakeTable] = useState<Record<string, number> | null>(null);
+    const [selectedMaxAmountTable, setSelectedMaxAmountTable] = useState<Record<string, number> | null>(null);
+    const [selectedMaxWithdrawTable, setSelectedMaxWithdrawTable] = useState<Record<string, number> | null>(null);
+    const [selectedCasinoProportionsTable, setSelectedCasinoProportionsTable] = useState<Record<string, number> | null>(null);
+    const [selectedLiveCasinoProportionsTable, setSelectedLiveCasinoProportionsTable] = useState<Record<string, number> | null>(null);
 
     // Validation
     const [errors, setErrors] = useState<string[]>([]);
 
-    // ============ FETCH ADMIN CONFIG ============
+    // ============ FETCH COMMON TABLES (AMOUNTS, STAKES, WITHDRAWALS, WAGER, PROPORTIONS) ONCE ON MOUNT ============
+    // These are INDEPENDENT of provider - same for all providers
     useEffect(() => {
-        const fetchAdminConfig = async () => {
+        const fetchCommonTables = async () => {
             try {
                 setLoadingAdmin(true);
-                const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}`);
-                setAdminConfig(response.data);
+
+                // Use PRAGMATIC as default to fetch common tables (doesn't matter which provider)
+                const response = await axios.get(`http://localhost:8000/api/stable-config/PRAGMATIC`);
+                const config = response.data as AdminConfig;
+
+                console.log('📦 Fetched COMMON tables (Amounts, Stakes, Withdrawals, Wager, Proportions)');
+
+                // Extract first table from each array and set the selected tables
+                if (config.minimum_stake_to_wager && Array.isArray(config.minimum_stake_to_wager) && config.minimum_stake_to_wager[0]) {
+                    setSelectedMinStakeTable(config.minimum_stake_to_wager[0].values);
+                    console.log('✅ Set Min Stake:', config.minimum_stake_to_wager[0].values);
+                }
+                if (config.maximum_stake_to_wager && Array.isArray(config.maximum_stake_to_wager) && config.maximum_stake_to_wager[0]) {
+                    setSelectedMaxStakeTable(config.maximum_stake_to_wager[0].values);
+                    console.log('✅ Set Max Stake:', config.maximum_stake_to_wager[0].values);
+                }
+                if (config.maximum_amount && Array.isArray(config.maximum_amount) && config.maximum_amount[0]) {
+                    setSelectedMaxAmountTable(config.maximum_amount[0].values);
+                    console.log('✅ Set Max Amount:', config.maximum_amount[0].values);
+                }
+                if (config.maximum_withdraw && Array.isArray(config.maximum_withdraw) && config.maximum_withdraw[0]) {
+                    setSelectedMaxWithdrawTable(config.maximum_withdraw[0].values);
+                    console.log('✅ Set Max Withdraw:', config.maximum_withdraw[0].values);
+                }
+                if (config.casino_proportions && Array.isArray(config.casino_proportions) && config.casino_proportions[0]) {
+                    setSelectedCasinoProportionsTable(config.casino_proportions[0].values);
+                    console.log('✅ Set Casino Proportions:', config.casino_proportions[0].values);
+                }
+                if (config.live_casino_proportions && Array.isArray(config.live_casino_proportions) && config.live_casino_proportions[0]) {
+                    setSelectedLiveCasinoProportionsTable(config.live_casino_proportions[0].values);
+                    console.log('✅ Set Live Casino Proportions:', config.live_casino_proportions[0].values);
+                }
+
+                setAdminConfig(config);
             } catch (err) {
-                console.error('Failed to fetch admin config:', err);
+                console.error('Failed to fetch common tables:', err);
                 setAdminConfig(null);
             } finally {
                 setLoadingAdmin(false);
             }
         };
 
-        fetchAdminConfig();
-    }, [provider]);
+        fetchCommonTables();
+    }, []); // Empty dependency array - fetch ONCE on mount, never change based on provider
 
-    // ============ FETCH PRICING TABLE BY COST ============
-    const fetchPricingTableByCost = async (costValue: number) => {
-        try {
-            setLoadingAdmin(true);
-            const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}`);
-            const config = response.data as AdminConfig;
 
-            // Search for cost table matching this EUR value
-            if (config.cost && Array.isArray(config.cost)) {
-                let matchedTable = null;
-                const tolerance = 0.001; // Allow small floating point differences
-
-                // Find table where EUR value is close to costValue
-                for (const table of config.cost) {
-                    if (table.values && Math.abs(table.values.EUR - costValue) < tolerance) {
-                        matchedTable = table;
-                        break;
-                    }
-                }
-
-                if (matchedTable && matchedTable.values) {
-                    // ✅ SAVE the matched table for later use
-                    setMatchedCostTable(matchedTable.values);
-                    console.log('✅ Matched cost table with EUR ≈', costValue, ':', matchedTable.values);
-
-                    // Set minimum amount based on EUR value from table
-                    setMinimumAmountEUR(matchedTable.values.EUR * 250);
-
-                    // Set maximum withdraw from admin config if available
-                    if (config.maximum_withdraw && Array.isArray(config.maximum_withdraw)) {
-                        const withdrawTable = config.maximum_withdraw[0];
-                        if (withdrawTable && withdrawTable.values) {
-                            const eurWithdraw = withdrawTable.values.EUR || Object.values(withdrawTable.values)[0];
-                            if (eurWithdraw) {
-                                setMaximumWithdrawEUR(eurWithdraw);
-                            }
-                        }
-                    }
-                } else {
-                    console.warn('⚠️ No cost table found with EUR ≈', costValue);
-                    setMatchedCostTable(null);
-                }
-            }
-
-            setAdminConfig(config);
-        } catch (err) {
-            console.error('Failed to fetch pricing table by cost:', err);
-            setMatchedCostTable(null);
-        } finally {
-            setLoadingAdmin(false);
-        }
-    };
-
-    // Handle cost change - fetch table when cost is set
-    const handleCostChange = (newCost: number) => {
-        setCostEUR(newCost);
-        if (newCost > 0) {
-            fetchPricingTableByCost(newCost);
-        }
-    };
-
-    // ============ BUILD CURRENCY MAP FROM ADMIN ============
-    const buildCurrencyMap = (eurValue: number, fieldName: 'minimum_amount' | 'cost' | 'maximum_withdraw'): Record<string, number> => {
-        // 🎯 For cost field, ALWAYS search for matching table by EUR value
-        if (fieldName === 'cost' && adminConfig && adminConfig.cost) {
-            const tolerance = 0.001;
-            for (const table of adminConfig.cost) {
-                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
-                    console.log('✅ Found matching cost table for EUR =', eurValue, ':', table.values);
-                    // "*" is ALWAYS the EUR value
-                    return { '*': table.values.EUR, ...table.values };
-                }
-            }
-            console.warn('⚠️ No exact cost table found for EUR =', eurValue, '- using defaults');
-        }
-
-        // Otherwise build from admin config or use default
-        // "*" is ALWAYS EUR value
-        const map: Record<string, number> = { '*': eurValue };
-
-        if (!adminConfig || !adminConfig[fieldName]) {
-            CURRENCIES.forEach(curr => {
-                map[curr] = eurValue;
-            });
-            return map;
-        }
-
-        const tables = adminConfig[fieldName];
-        if (Array.isArray(tables) && tables.length > 0) {
-            const table = tables[0];
-            // Get EUR value from table for "*"
-            map['*'] = table.values.EUR || eurValue;
-            CURRENCIES.forEach(curr => {
-                map[curr] = table.values[curr] || eurValue;
-            });
-        } else {
-            CURRENCIES.forEach(curr => {
-                map[curr] = eurValue;
-            });
-        }
-
-        return map;
-    };
-
-    // ============ CALCULATE MULTIPLIER ============
-    const buildMultiplierMap = (): Record<string, number> => {
-        const minimumAmountMap = buildCurrencyMap(minimumAmountEUR, 'minimum_amount');
-        const costMap = buildCurrencyMap(costEUR, 'cost');
-        const multiplierMap: Record<string, number> = {};
-
-        CURRENCIES.forEach(curr => {
-            const minAmount = minimumAmountMap[curr] || minimumAmountEUR;
-            const cost = costMap[curr] || costEUR;
-            if (cost > 0) {
-                const fsValue = minAmount / cost;
-                // Use minFsAmount if "Up To" is enabled, otherwise use maximumBets
-                const baseValue = upTo ? (minFsAmount[curr] || 50) : maximumBets;
-                multiplierMap[curr] = parseFloat((baseValue / fsValue).toFixed(4));
-            } else {
-                multiplierMap[curr] = 1;
-            }
-        });
-
-        return multiplierMap;
-    };
 
     // ============ PARSE SEGMENTS FROM COMMA-SEPARATED INPUT ============
     const handleSegmentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,10 +216,8 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
 
         if (!gameId.trim()) newErrors.push('Game ID is required');
         if (minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
-        if (costEUR <= 0) newErrors.push('Cost must be > 0');
-        if (maximumBets <= 0) newErrors.push('Maximum bets must be > 0');
-        if (maximumWithdrawEUR <= 0) newErrors.push('Maximum withdraw must be > 0');
-        if (!game.trim()) newErrors.push('Game name is required');
+        if (percentage <= 0) newErrors.push('Percentage must be > 0');
+        if (wageringMultiplier <= 0) newErrors.push('Wagering multiplier must be > 0');
         if (withSchedule && (!scheduleFrom || !scheduleTo)) newErrors.push('Both schedule dates required if enabled');
 
         setErrors(newErrors);
@@ -319,86 +229,27 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
         if (!validate()) return;
 
         try {
-            // Build complete JSON structure
-            const bonusJson: any = {
-                id: gameId,
-                type: 'bonus_template',
-            };
-
-            // Schedule
-            if (withSchedule && scheduleFrom && scheduleTo) {
-                bonusJson.schedule = {
-                    type: 'period',
-                    from: scheduleFrom,
-                    to: scheduleTo,
-                };
-            }
-
-            // Trigger
-            bonusJson.trigger = {
-                type: triggerType,
-                duration: duration,
-                minimumAmount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount'),
-            };
-
-            if (iterationsOptional && iterations > 1) {
-                bonusJson.trigger.iterations = iterations;
-            }
-
-            if (restrictedCountries.length > 0) {
-                bonusJson.trigger.restrictedCountries = restrictedCountries;
-            }
-
-            // Config
-            const multiplierMap = buildMultiplierMap();
-            const maxWithdrawMap = buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw');
-            const maxWithdrawObjects: Record<string, { cap: number }> = {};
-
-            Object.entries(maxWithdrawMap).forEach(([currency, value]) => {
-                maxWithdrawObjects[currency] = { cap: value };
-            });
-
-            bonusJson.config = {
-                cost: buildCurrencyMap(costEUR, 'cost'),
-                multiplier: multiplierMap,
-                maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
-                maximumWithdraw: maxWithdrawObjects,
-                provider: provider,
-                brand: brand,
-                type: configType,
-                withdrawActive: withdrawActive,
-                category: category,
-                extra: { game: game },
-                expiry: expiry,
-            };
-
-            // Flatten for database storage
             const payload: any = {
                 id: gameId,
-                bonus_type: triggerType,
+                bonus_type: 'reload',
                 trigger_type: triggerType,
                 trigger_duration: duration,
                 trigger_iterations: iterationsOptional ? iterations : 1,
                 category: category,
                 provider: provider,
-                brand: brand,
-                config_type: configType,
-                game: game,
-                expiry: expiry,
-                percentage: 100,
-                wagering_multiplier: 1,
-                minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount'),
-                cost: buildCurrencyMap(costEUR, 'cost'),
-                multiplier: buildMultiplierMap(),
-                maximum_bets: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
-                minimum_stake_to_wager: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
-                maximum_stake_to_wager: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
-                maximum_amount: buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw'),
-                maximum_withdraw: buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw'),
+                brand: 'SYSTEM',
+                config_type: 'cash',
+                percentage: percentage,
+                wagering_multiplier: wageringMultiplier,
+                minimum_amount: Object.fromEntries(CURRENCIES.map(c => [c, minimumAmountEUR])),
+                minimum_stake_to_wager: selectedMinStakeTable,
+                maximum_stake_to_wager: selectedMaxStakeTable,
+                maximum_amount: selectedMaxAmountTable,
+                maximum_withdraw: selectedMaxWithdrawTable,
                 include_amount_on_target_wager: includeAmount,
                 cap_calculation_to_maximum: capCalculation,
-                compensate_overspending: compensateOverspend,
-                withdraw_active: withdrawActive,
+                compensate_overspending: true,
+                withdraw_active: false,
                 restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : null,
                 segments: segments.length > 0 ? segments : null,
                 ...(withSchedule && scheduleFrom && scheduleTo && {
@@ -406,18 +257,19 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                     schedule_to: formatDateTimeForPayload(scheduleTo),
                     schedule_type: 'period',
                 }),
-                config_extra: { game: game },
-                up_to: upTo,
-                min_fs_amount: upTo ? minFsAmount : null,
+                config_extra: {
+                    category: category,
+                    proportions_type: proportionsType,
+                    ...(proportionsType === 'casino' && selectedCasinoProportionsTable && { proportions: selectedCasinoProportionsTable }),
+                    ...(proportionsType === 'live_casino' && selectedLiveCasinoProportionsTable && { proportions: selectedLiveCasinoProportionsTable }),
+                },
+                expiry: expiry,
             };
 
             // Save to database
             await axios.post('http://localhost:8000/api/bonus-templates', payload);
 
-            // Also save the complete JSON for reference
-            console.log('Complete Bonus JSON:', JSON.stringify(bonusJson, null, 2));
-
-            alert(`✅ Free Spins Bonus "${gameId}" saved successfully!`);
+            alert(`✅ Reload Bonus "${gameId}" saved successfully!`);
             onBonusSaved?.();
 
             // Reset form
@@ -440,7 +292,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
 
     return (
         <div className="max-w-5xl mx-auto p-6 bg-white rounded-lg">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">🎰 Award Free Spins</h2>
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">🔄 Reload Bonus</h2>
 
             {/* Errors */}
             {errors.length > 0 && (
@@ -460,7 +312,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                         type="text"
                         value={gameId}
                         onChange={(e) => setGameId(e.target.value)}
-                        placeholder="e.g., Deposit 50 Get 600 FS on Bigger Bass Blizzard"
+                        placeholder="e.g., 150% Casino Reload Bonus up to €250"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                     />
                 </div>
@@ -473,10 +325,11 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                         onChange={(e) => setProvider(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                     >
+                        <option value="SYSTEM">SYSTEM</option>
                         <option value="PRAGMATIC">PRAGMATIC</option>
                         <option value="BETSOFT">BETSOFT</option>
                     </select>
-                    {loadingAdmin && <p className="text-xs text-indigo-600 mt-2">📡 Fetching admin pricing...</p>}
+                    {loadingAdmin && <p className="text-xs text-indigo-600 mt-2">📡 Fetching admin setup...</p>}
                 </div>
 
                 {/* 📋 Segments */}
@@ -552,7 +405,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                     </label>
 
                     {withSchedule && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
                                 <input
@@ -646,85 +499,107 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cost (EUR) *
-                                    {loadingAdmin && <span className="text-xs text-indigo-600 ml-2">Loading table...</span>}
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Percentage (%) *</label>
                                 <input
                                     type="number"
-                                    value={costEUR}
-                                    onChange={(e) => handleCostChange(parseFloat(e.target.value))}
-                                    step="0.01"
+                                    value={percentage}
+                                    onChange={(e) => setPercentage(parseFloat(e.target.value))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">💡 Enter cost to auto-load pricing table</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Bets *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Wagering Multiplier (x) *</label>
                                 <input
                                     type="number"
-                                    value={maximumBets}
-                                    onChange={(e) => setMaximumBets(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Up To Feature */}
-                        <div className="p-3 bg-white rounded border border-green-200 mt-4">
-                            <label className="flex items-center text-sm font-medium text-gray-700 mb-4 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={upTo}
-                                    onChange={(e) => setUpTo(e.target.checked)}
-                                    className="mr-2 w-4 h-4"
-                                />
-                                🎟️ Up To (Set Min FS Amount per Currency)
-                            </label>
-
-                            {upTo && (
-                                <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">MIN FS AMOUNT per Currency</label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {CURRENCIES.map(curr => (
-                                            <div key={curr}>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">{curr}</label>
-                                                <input
-                                                    type="number"
-                                                    value={minFsAmount[curr] || 0}
-                                                    onChange={(e) => setMinFsAmount({
-                                                        ...minFsAmount,
-                                                        [curr]: parseFloat(e.target.value) || 0
-                                                    })}
-                                                    step="1"
-                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-gray-900 bg-white text-sm"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                                <input
-                                    type="text"
-                                    value={brand}
-                                    onChange={(e) => setBrand(e.target.value)}
+                                    value={wageringMultiplier}
+                                    onChange={(e) => setWageringMultiplier(parseFloat(e.target.value))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                <input
-                                    type="text"
-                                    value={configType}
-                                    onChange={(e) => setConfigType(e.target.value)}
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Min Stake to Wager *</label>
+                                <select
+                                    value={selectedMinStakeTable ? JSON.stringify(selectedMinStakeTable) : ''}
+                                    onChange={(e) => {
+                                        if (e.target.value && adminConfig?.minimum_stake_to_wager) {
+                                            const table = adminConfig.minimum_stake_to_wager.find(t => JSON.stringify(t.values) === e.target.value);
+                                            if (table) setSelectedMinStakeTable(table.values);
+                                        }
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                                />
+                                >
+                                    <option value="">Select table...</option>
+                                    {adminConfig?.minimum_stake_to_wager?.map(table => (
+                                        <option key={table.id} value={JSON.stringify(table.values)}>
+                                            {table.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Max Stake to Wager *</label>
+                                <select
+                                    value={selectedMaxStakeTable ? JSON.stringify(selectedMaxStakeTable) : ''}
+                                    onChange={(e) => {
+                                        if (e.target.value && adminConfig?.maximum_stake_to_wager) {
+                                            const table = adminConfig.maximum_stake_to_wager.find(t => JSON.stringify(t.values) === e.target.value);
+                                            if (table) setSelectedMaxStakeTable(table.values);
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                >
+                                    <option value="">Select table...</option>
+                                    {adminConfig?.maximum_stake_to_wager?.map(table => (
+                                        <option key={table.id} value={JSON.stringify(table.values)}>
+                                            {table.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Amount *</label>
+                                <select
+                                    value={selectedMaxAmountTable ? JSON.stringify(selectedMaxAmountTable) : ''}
+                                    onChange={(e) => {
+                                        if (e.target.value && adminConfig?.maximum_amount) {
+                                            const table = adminConfig.maximum_amount.find(t => JSON.stringify(t.values) === e.target.value);
+                                            if (table) setSelectedMaxAmountTable(table.values);
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                >
+                                    <option value="">Select table...</option>
+                                    {adminConfig?.maximum_amount?.map(table => (
+                                        <option key={table.id} value={JSON.stringify(table.values)}>
+                                            {table.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Withdraw *</label>
+                                <select
+                                    value={selectedMaxWithdrawTable ? JSON.stringify(selectedMaxWithdrawTable) : ''}
+                                    onChange={(e) => {
+                                        if (e.target.value && adminConfig?.maximum_withdraw) {
+                                            const table = adminConfig.maximum_withdraw.find(t => JSON.stringify(t.values) === e.target.value);
+                                            if (table) setSelectedMaxWithdrawTable(table.values);
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                >
+                                    <option value="">Select table...</option>
+                                    {adminConfig?.maximum_withdraw?.map(table => (
+                                        <option key={table.id} value={JSON.stringify(table.values)}>
+                                            {table.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div>
@@ -736,30 +611,56 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                                 >
                                     <option value="games">Games</option>
                                     <option value="live_casino">Live Casino</option>
-                                    <option value="sports_book">Sports Book</option>
+                                    <option value="sports">Sports</option>
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Max Withdraw (EUR) *</label>
-                                <input
-                                    type="number"
-                                    value={maximumWithdrawEUR}
-                                    onChange={(e) => setMaximumWithdrawEUR(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                                />
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Game Name *</label>
-                            <input
-                                type="text"
-                                value={game}
-                                onChange={(e) => setGame(e.target.value)}
-                                placeholder="e.g., Bigger Bass Blizzard - Christmas Catch"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
-                            />
+                        {/* Proportions Section - Radio Buttons Only */}
+                        <div className="p-3 bg-white rounded border border-green-200">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">Proportions *</label>
+                            <div className="flex gap-4">
+                                <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={proportionsType === 'casino'}
+                                        onChange={() => setProportionsType('casino')}
+                                        className="mr-2 w-4 h-4"
+                                    />
+                                    🎰 Casino Proportions
+                                </label>
+                                <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={proportionsType === 'live_casino'}
+                                        onChange={() => setProportionsType('live_casino')}
+                                        className="mr-2 w-4 h-4"
+                                    />
+                                    🎭 Live Casino Proportions
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={includeAmount}
+                                    onChange={(e) => setIncludeAmount(e.target.checked)}
+                                    className="mr-2 w-4 h-4"
+                                />
+                                Include Amount on Target Wager
+                            </label>
+
+                            <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={capCalculation}
+                                    onChange={(e) => setCapCalculation(e.target.checked)}
+                                    className="mr-2 w-4 h-4"
+                                />
+                                Cap Calculation to Maximum
+                            </label>
                         </div>
 
                         <div>
@@ -772,16 +673,6 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
                             />
                         </div>
-
-                        <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={withdrawActive}
-                                onChange={(e) => setWithdrawActive(e.target.checked)}
-                                className="mr-2 w-4 h-4"
-                            />
-                            Withdraw Active
-                        </label>
                     </div>
                 </div>
 
@@ -790,7 +681,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                     onClick={handleSave}
                     className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 transition"
                 >
-                    💾 Save Free Spins Bonus
+                    💾 Save Reload Bonus
                 </button>
             </div>
         </div>

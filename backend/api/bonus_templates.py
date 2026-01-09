@@ -44,6 +44,7 @@ def create_bonus_template(template: BonusTemplateCreate, db: Session = Depends(g
         trigger_description=template.trigger_description,
         minimum_amount=template.minimum_amount,
         restricted_countries=template.restricted_countries,
+        segments=template.segments,
         cost=template.cost,
         multiplier=template.multiplier,
         maximum_bets=template.maximum_bets,
@@ -520,42 +521,64 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     elif trigger_description:
         trigger_description["*"] = next(iter(trigger_description.values()))
 
-    # Build the full JSON from stored data
+    # Build the full JSON from stored data with correct field ordering
+    # Structure: 1) id 2) schedule 3) trigger 4) config 5) type
     json_output = {
         "id": template.id,
-        "trigger": {
-            "type": template.trigger_type,
-            "duration": template.trigger_duration,
-            "minimumAmount": template.minimum_amount,
-        },
-        "config": {
-            "cost": template.maximum_amount,
-            "multiplier": template.maximum_amount,
-            "maximumBets": template.maximum_stake_to_wager,
-            "provider": template.provider,
-            "brand": template.brand,
-            "type": template.bonus_type,
-            "category": template.category,
-            "maximumWithdraw": maximum_withdraw_formatted,
-            "extra": {
-                "category": template.category,
-                "game": template.bonus_type  # Get from template data
-            }
-        },
-        "type": "bonus_template"
     }
 
-    # Add trigger name and description if they exist
+    # Add schedule right after id if it exists
+    if template.schedule_from and template.schedule_to:
+        json_output["schedule"] = {
+            "type": template.schedule_type or "period",
+            "from": template.schedule_from,
+            "to": template.schedule_to
+        }
+
+    # Add trigger section
+    json_output["trigger"] = {}
+
+    # Build trigger with correct field order
+    # 1) name and description
     if trigger_name:
         json_output["trigger"]["name"] = trigger_name
     if trigger_description:
         json_output["trigger"]["description"] = trigger_description
 
-    # Add schedule if it exists
-    if template.schedule_from and template.schedule_to:
-        json_output["trigger"]["schedule"] = {
-            "from": template.schedule_from,
-            "to": template.schedule_to
+    # 2) minimum amount
+    if template.minimum_amount:
+        json_output["trigger"]["minimumAmount"] = template.minimum_amount
+
+    # 3) iterations, type, duration, restrictedCountries, segments
+    if template.trigger_iterations:
+        json_output["trigger"]["iterations"] = template.trigger_iterations
+
+    json_output["trigger"]["type"] = template.trigger_type
+    json_output["trigger"]["duration"] = template.trigger_duration
+
+    if hasattr(template, 'restricted_countries') and template.restricted_countries:
+        json_output["trigger"]["restrictedCountries"] = template.restricted_countries
+
+    if hasattr(template, 'segments') and template.segments:
+        json_output["trigger"]["segments"] = template.segments
+
+    # Add config section
+    json_output["config"] = {
+        "cost": template.maximum_amount,
+        "multiplier": template.maximum_amount,
+        "maximumBets": template.maximum_stake_to_wager,
+        "provider": template.provider,
+        "brand": template.brand,
+        "type": template.bonus_type,
+        "category": template.category,
+        "maximumWithdraw": maximum_withdraw_formatted,
+        "extra": {
+            "category": template.category,
+            "game": template.bonus_type  # Get from template data
         }
+    }
+
+    # Add type
+    json_output["type"] = "bonus_template"
 
     return json_output

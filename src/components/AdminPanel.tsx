@@ -26,8 +26,14 @@ interface StableConfigWithVariations {
 
 export default function AdminPanel() {
     const [selectedProvider, setSelectedProvider] = useState('PRAGMATIC');
-    const [activeTab, setActiveTab] = useState<'cost' | 'amounts' | 'stakes' | 'withdrawals'>('cost');
+    const [activeTab, setActiveTab] = useState<'cost' | 'amounts' | 'stakes' | 'withdrawals' | 'wager' | 'proportions'>('cost');
     const [loadingData, setLoadingData] = useState(false);
+
+    // Text-based proportions state
+    const [pragmaticCasinoProportions, setPragmaticCasinoProportions] = useState('');
+    const [pragmaticLiveCasinoProportions, setPragmaticLiveCasinoProportions] = useState('');
+    const [betsoftCasinoProportions, setBetsoftCasinoProportions] = useState('');
+    const [betsoftLiveCasinoProportions, setBetsoftLiveCasinoProportions] = useState('');
 
     const defaultTable: CurrencyTable = {
         id: '1',
@@ -69,7 +75,6 @@ export default function AdminPanel() {
     // Fetch saved config from backend when provider changes
     useEffect(() => {
         const fetchConfig = async () => {
-            setLoadingData(true);
             try {
                 const response = await axios.get(
                     `${API_ENDPOINTS.BASE_URL}/api/stable-config/${selectedProvider}`
@@ -86,15 +91,17 @@ export default function AdminPanel() {
                     };
                     if (selectedProvider === 'PRAGMATIC') {
                         setPragmaticConfig(newConfig);
+                        setPragmaticCasinoProportions(response.data.casino_proportions || '');
+                        setPragmaticLiveCasinoProportions(response.data.live_casino_proportions || '');
                     } else {
                         setBetsoftConfig(newConfig);
+                        setBetsoftCasinoProportions(response.data.casino_proportions || '');
+                        setBetsoftLiveCasinoProportions(response.data.live_casino_proportions || '');
                     }
                 }
             } catch (error: any) {
                 // No saved config yet, keep defaults
                 console.log(`No saved config for ${selectedProvider}`, error.response?.status);
-            } finally {
-                setLoadingData(false);
             }
         };
 
@@ -165,8 +172,30 @@ export default function AdminPanel() {
     const handleSave = async () => {
         setLoading(true);
         try {
-            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config`, config);
-            setMessage(`✅ ${selectedProvider} stable values saved successfully!`);
+            const payload = {
+                ...config,
+                casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions,
+                live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
+            };
+            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config`, payload);
+
+            // Show tab-specific message
+            let successMessage = '';
+            if (activeTab === 'cost') {
+                successMessage = `✅ ${selectedProvider} cost tables saved successfully!`;
+            } else if (activeTab === 'amounts') {
+                successMessage = '✅ Minimum & maximum bonus amounts saved successfully!';
+            } else if (activeTab === 'stakes') {
+                successMessage = '✅ Minimum & maximum stake values saved successfully!';
+            } else if (activeTab === 'withdrawals') {
+                successMessage = '✅ Maximum withdrawal amounts saved successfully!';
+            } else if (activeTab === 'wager') {
+                successMessage = '✅ Wager values saved successfully!';
+            } else if (activeTab === 'proportions') {
+                successMessage = '✅ Proportions saved successfully!';
+            }
+
+            setMessage(successMessage);
             setTimeout(() => setMessage(''), 4000);
         } catch (error: any) {
             setMessage(`❌ Error: ${error.response?.data?.detail || error.message}`);
@@ -379,47 +408,20 @@ export default function AdminPanel() {
                 {/* Header Section */}
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-white mb-2">Configuration Center</h1>
-                    <p className="text-slate-400">Manage pricing tables and currency configurations for{' '}
-                        <span className={`font-semibold ${selectedProvider === 'PRAGMATIC' ? 'text-blue-400' : 'text-purple-400'}`}>
-                            {selectedProvider}
-                        </span>
-                    </p>
-                </div>
-
-                {/* Provider Selection - Card Layout */}
-                <div className="mb-8">
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Select Provider</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                        {['PRAGMATIC', 'BETSOFT'].map((provider) => (
-                            <button
-                                key={provider}
-                                onClick={() => setSelectedProvider(provider)}
-                                className={`p-4 rounded-lg border-2 transition-all duration-300 text-center ${selectedProvider === provider
-                                    ? provider === 'PRAGMATIC'
-                                        ? 'border-blue-500 bg-blue-950/30 text-blue-300'
-                                        : 'border-purple-500 bg-purple-950/30 text-purple-300'
-                                    : 'border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600 hover:bg-slate-800/60'
-                                    }`}
-                            >
-                                <div className="text-2xl mb-2">{provider === 'PRAGMATIC' ? '🎰' : '🎲'}</div>
-                                <div className="font-semibold">{provider}</div>
-                                <div className="text-xs mt-1">
-                                    {selectedProvider === provider ? '✓ Selected' : 'Select'}
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                    <p className="text-slate-400">Manage pricing tables and currency configurations</p>
                 </div>
 
                 {/* Configuration Tabs - Card Grid */}
                 <div className="mb-8">
                     <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Select Configuration</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
                         {[
                             { id: 'cost', label: 'Cost', icon: '💰' },
                             { id: 'amounts', label: 'Amounts', icon: '💵' },
                             { id: 'stakes', label: 'Stakes', icon: '🎯' },
                             { id: 'withdrawals', label: 'Withdrawals', icon: '🏦' },
+                            { id: 'wager', label: 'Wager', icon: '🎰' },
+                            { id: 'proportions', label: 'Proportions', icon: '📊' },
                         ].map(({ id, label, icon }) => (
                             <button
                                 key={id}
@@ -445,7 +447,34 @@ export default function AdminPanel() {
                         </div>
                     ) : (
                         <>
-                            {activeTab === 'cost' && renderSettingTable('cost', 'Cost Per Player', 'Set how much you pay (in EUR) for each player receiving this bonus')}
+                            {activeTab === 'cost' && (
+                                <div className="space-y-8">
+                                    {/* Provider Selection for Cost Tab */}
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-3">Select Provider</h3>
+                                        <div className="grid grid-cols-2 gap-3 mb-8">
+                                            {['PRAGMATIC', 'BETSOFT'].map((provider) => (
+                                                <button
+                                                    key={provider}
+                                                    onClick={() => setSelectedProvider(provider)}
+                                                    className={`p-3 rounded-lg border-2 transition-all duration-300 text-center ${selectedProvider === provider
+                                                        ? provider === 'PRAGMATIC'
+                                                            ? 'border-blue-500 bg-blue-950/30 text-blue-300'
+                                                            : 'border-purple-500 bg-purple-950/30 text-purple-300'
+                                                        : 'border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600 hover:bg-slate-800/60'
+                                                        }`}
+                                                >
+                                                    <div className="text-xl mb-1">{provider === 'PRAGMATIC' ? '🎰' : '🎲'}</div>
+                                                    <div className="text-xs font-semibold">{provider}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Cost Tables */}
+                                    {renderSettingTable('cost', 'Cost Per Spin', 'Set how much you pay (in EUR) for each player receiving this bonus')}
+                                </div>
+                            )}
                             {activeTab === 'amounts' && (
                                 <div className="space-y-8">
                                     {renderSettingTable('minimum_amount', 'Minimum Bonus Amount', 'Smallest bonus value per currency')}
@@ -459,6 +488,53 @@ export default function AdminPanel() {
                                 </div>
                             )}
                             {activeTab === 'withdrawals' && renderSettingTable('maximum_withdraw', 'Maximum Withdrawal', 'Maximum amount players can withdraw from bonus winnings')}
+                            {activeTab === 'wager' && (
+                                <div className="space-y-8">
+                                    {renderSettingTable('minimum_stake_to_wager', 'Minimum Stake to Wager', 'Smallest bet amount for wagering requirement')}
+                                    {renderSettingTable('maximum_stake_to_wager', 'Maximum Stake to Wager', 'Largest bet amount for wagering requirement')}
+                                </div>
+                            )}
+                            {activeTab === 'proportions' && (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="p-4 bg-slate-800/40 border border-slate-700 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-slate-300 mb-3">🎰 Casino Proportions</h4>
+                                            <p className="text-xs text-slate-400 mb-3">Enter bet distribution for casino games</p>
+                                            <textarea
+                                                value={selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions}
+                                                onChange={(e) => {
+                                                    if (selectedProvider === 'PRAGMATIC') {
+                                                        setPragmaticCasinoProportions(e.target.value);
+                                                    } else {
+                                                        setBetsoftCasinoProportions(e.target.value);
+                                                    }
+                                                }}
+                                                placeholder='e.g., {"SLOT_GAMES": 100, "VIRTUAL_GAMES": 50, ...}'
+                                                className="w-full px-3 py-2 border border-slate-600 rounded-lg bg-slate-700/50 text-slate-200 text-sm font-mono"
+                                                rows={28}
+                                            />
+                                        </div>
+
+                                        <div className="p-4 bg-slate-800/40 border border-slate-700 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-slate-300 mb-3">🎭 Live Casino Proportions</h4>
+                                            <p className="text-xs text-slate-400 mb-3">Enter bet distribution for live casino games</p>
+                                            <textarea
+                                                value={selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions}
+                                                onChange={(e) => {
+                                                    if (selectedProvider === 'PRAGMATIC') {
+                                                        setPragmaticLiveCasinoProportions(e.target.value);
+                                                    } else {
+                                                        setBetsoftLiveCasinoProportions(e.target.value);
+                                                    }
+                                                }}
+                                                placeholder='e.g., {"CASINO_GAMES": 20, "LUCKY_GAMES": 50, ...}'
+                                                className="w-full px-3 py-2 border border-slate-600 rounded-lg bg-slate-700/50 text-slate-200 text-sm font-mono"
+                                                rows={28}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

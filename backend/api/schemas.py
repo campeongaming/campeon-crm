@@ -19,6 +19,8 @@ class StableConfigCreate(BaseModel):
     minimum_stake_to_wager: List[CurrencyTable] = []
     maximum_stake_to_wager: List[CurrencyTable] = []
     maximum_withdraw: List[CurrencyTable] = []
+    casino_proportions: str = ""
+    live_casino_proportions: str = ""
 
 
 class StableConfigResponse(StableConfigCreate):
@@ -50,6 +52,7 @@ class BonusTemplateCreate(BaseModel):
     minimum_amount: Optional[Dict[str, float]
                              ] = None  # {"*": 25, "EUR": 25, ...}
     restricted_countries: Optional[List[str]] = None  # ["BR", "AU", "NZ", ...]
+    segments: Optional[List[str]] = None  # ["segment1", "segment2", ...]
 
     # Config - Cost and multiplier per currency
     cost: Optional[Dict[str, float]] = None  # {"EUR": 0.12, "USD": 0.12, ...}

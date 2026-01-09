@@ -126,95 +126,13 @@ export default function OptimizationTeam() {
         setLoading(true);
         setMessage('');
         try {
-            // Fetch bonus details from database
+            // Fetch complete JSON with merged translations from backend
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/${selectedBonusId}`
+                `http://localhost:8000/api/bonus-templates/${selectedBonusId}/json`
             );
 
-            const bonus = response.data;
-            console.log('Fetched bonus:', bonus); // Debug
-
-            // Reconstruct complete JSON structure with exact field ordering (matching your config.json)
-            const bonusJson: any = {
-                id: bonus.id,
-            };
-
-            // Add schedule if present
-            if (bonus.schedule_from && bonus.schedule_to) {
-                bonusJson.schedule = {
-                    type: bonus.schedule_type || 'period',
-                    from: bonus.schedule_from,
-                    to: bonus.schedule_to,
-                };
-            }
-
-            // Build trigger section with exact field order
-            bonusJson.trigger = {};
-
-            // Name (multilingual)
-            if (bonus.trigger_name) {
-                bonusJson.trigger.name = bonus.trigger_name;
-            }
-
-            // Minimum amount (per currency)
-            if (bonus.minimum_amount) {
-                bonusJson.trigger.minimumAmount = bonus.minimum_amount;
-            }
-
-            // Iterations
-            if (bonus.trigger_iterations && bonus.trigger_iterations > 0) {
-                bonusJson.trigger.iterations = bonus.trigger_iterations;
-            }
-
-            // Type, duration (required)
-            bonusJson.trigger.type = bonus.bonus_type || 'deposit';
-            bonusJson.trigger.duration = bonus.trigger_duration || '7d';
-
-            // Restricted countries (optional array)
-            if (bonus.restricted_countries && Array.isArray(bonus.restricted_countries) && bonus.restricted_countries.length > 0) {
-                bonusJson.trigger.restrictedCountries = bonus.restricted_countries;
-            }
-
-            // Build config section with exact field order
-            bonusJson.config = {};
-
-            // Cost (per currency)
-            if (bonus.cost) {
-                bonusJson.config.cost = bonus.cost;
-            }
-
-            // Multiplier (per currency)
-            if (bonus.multiplier) {
-                bonusJson.config.multiplier = bonus.multiplier;
-            }
-
-            // Maximum bets (per currency)
-            if (bonus.maximum_bets) {
-                bonusJson.config.maximumBets = bonus.maximum_bets;
-            }
-
-            // Provider, brand, type
-            bonusJson.config.provider = bonus.provider || 'PRAGMATIC';
-            bonusJson.config.brand = bonus.brand || 'PRAGMATIC';
-            bonusJson.config.type = bonus.config_type || 'free_bet';
-            bonusJson.config.withdrawActive = bonus.withdraw_active !== undefined ? bonus.withdraw_active : false;
-            bonusJson.config.category = bonus.category || 'games';
-
-            // Maximum withdraw (per currency with cap)
-            if (bonus.maximum_withdraw) {
-                const maxWithdrawObjects: Record<string, { cap: number }> = {};
-                Object.entries(bonus.maximum_withdraw).forEach(([curr, val]: any) => {
-                    maxWithdrawObjects[curr] = { cap: typeof val === 'object' ? val.cap : val };
-                });
-                bonusJson.config.maximumWithdraw = maxWithdrawObjects;
-            }
-
-            // Extra (game info)
-            bonusJson.config.extra = bonus.config_extra || { game: bonus.game };
-            bonusJson.config.expiry = bonus.expiry || '7d';
-
-            // Add type
-            bonusJson.type = 'bonus_template';
+            const bonusJson = response.data;
+            console.log('Fetched bonus JSON with translations:', bonusJson);
 
             // Display in editor
             const jsonString = JSON.stringify(bonusJson, null, 2);
@@ -225,7 +143,7 @@ export default function OptimizationTeam() {
             setValidationErrors(errors);
 
             if (errors.length === 0) {
-                setMessage('✅ JSON generated and validated successfully!');
+                setMessage('✅ JSON generated and validated successfully with translations!');
             }
         } catch (error: any) {
             let errorMessage = 'Failed to generate JSON';

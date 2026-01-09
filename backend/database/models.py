@@ -26,6 +26,10 @@ class StableConfig(Base):
     maximum_stake_to_wager = Column(JSON, default=[])
     maximum_withdraw = Column(JSON, default=[])
 
+    # Proportions stored as text (JSON strings)
+    casino_proportions = Column(Text, default='')
+    live_casino_proportions = Column(Text, default='')
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow,
                         onupdate=datetime.utcnow)
@@ -66,6 +70,10 @@ class BonusTemplate(Base):
     # TRIGGER - Restricted countries (optional array)
     # Structure: ["BR", "AU", "NZ", ...]
     restricted_countries = Column(JSON, default=[])
+
+    # TRIGGER - Segments (optional array)
+    # Structure: ["segment1", "segment2", ...]
+    segments = Column(JSON, default=[])
 
     # CONFIG - Cost per FS (per currency)
     # Structure: {"EUR": 0.12, "USD": 0.12, ...}
