@@ -19,8 +19,8 @@ class StableConfigCreate(BaseModel):
     minimum_stake_to_wager: List[CurrencyTable] = []
     maximum_stake_to_wager: List[CurrencyTable] = []
     maximum_withdraw: List[CurrencyTable] = []
-    casino_proportions: str = ""
-    live_casino_proportions: str = ""
+    casino_proportions: Any = None  # Can be string or list of tables
+    live_casino_proportions: Any = None  # Can be string or list of tables
 
 
 class StableConfigResponse(StableConfigCreate):
@@ -82,7 +82,7 @@ class BonusTemplateCreate(BaseModel):
     config_type: str = "free_bet"
     game: Optional[str] = None
     expiry: str = "7d"
-    config_extra: Optional[Dict[str, str]] = None
+    config_extra: Optional[Dict[str, Any]] = None
 
 
 class BonusTemplateResponse(BonusTemplateCreate):

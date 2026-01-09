@@ -439,49 +439,49 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
     };
 
     return (
-        <div className="max-w-5xl mx-auto p-6 bg-white rounded-lg">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">🎰 Award Free Spins</h2>
+        <div className="max-w-6xl mx-auto p-6 bg-slate-800/50 rounded-lg border border-slate-700/60">
+            <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">🎰 Award Free Spins</h2>
 
             {/* Errors */}
             {errors.length > 0 && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg">
-                    <p className="font-semibold text-red-700 mb-2">⚠️ Errors:</p>
+                <div className="mb-6 p-4 bg-red-900/20 border border-red-700/60 rounded-lg">
+                    <p className="font-semibold text-red-400 mb-2">⚠️ Errors:</p>
                     {errors.map((err, i) => (
-                        <p key={i} className="text-red-600 text-sm">• {err}</p>
+                        <p key={i} className="text-red-300 text-sm">• {err}</p>
                     ))}
                 </div>
             )}
 
             <div className="space-y-6">
                 {/* Game ID */}
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-300">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Game ID *</label>
+                <div className="p-4 bg-slate-700/40 rounded-lg border border-blue-500/40">
+                    <label className="block text-sm font-semibold text-slate-100 mb-2">Game ID *</label>
                     <input
                         type="text"
                         value={gameId}
                         onChange={(e) => setGameId(e.target.value)}
                         placeholder="e.g., Deposit 50 Get 600 FS on Bigger Bass Blizzard"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                     />
                 </div>
 
                 {/* Provider Selection */}
-                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-300">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Provider</label>
+                <div className="p-4 bg-slate-700/40 rounded-lg border border-indigo-500/40">
+                    <label className="block text-sm font-semibold text-slate-100 mb-2">Provider</label>
                     <select
                         value={provider}
                         onChange={(e) => setProvider(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                        className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                     >
                         <option value="PRAGMATIC">PRAGMATIC</option>
                         <option value="BETSOFT">BETSOFT</option>
                     </select>
-                    {loadingAdmin && <p className="text-xs text-indigo-600 mt-2">📡 Fetching admin pricing...</p>}
+                    {loadingAdmin && <p className="text-xs text-indigo-400 mt-2">📡 Fetching admin pricing...</p>}
                 </div>
 
                 {/* 📋 Segments */}
-                <div className="p-3 bg-white rounded border border-purple-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">📋 Segments (Optional - comma separated or press Enter)</label>
+                <div className="p-3 bg-slate-700/40 rounded border border-purple-500/40">
+                    <label className="block text-sm font-medium text-slate-100 mb-2">📋 Segments (Optional - comma separated or press Enter)</label>
                     <div className="flex gap-2 mb-2">
                         <input
                             type="text"
@@ -490,16 +490,16 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                             onKeyDown={handleSegmentKeyDown}
                             onBlur={handleSegmentBlur}
                             placeholder="e.g., segment1, segment2, fast-track_system-lifecycle-version-1959"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                            className="flex-1 px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
                         />
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {segments.map((segment, idx) => (
-                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-100 rounded-full text-sm">
+                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm">
                                 {segment}
                                 <button
                                     onClick={() => handleRemoveSegment(idx)}
-                                    className="text-red-600 hover:text-red-800 font-bold cursor-pointer"
+                                    className="text-red-300 hover:text-red-800 font-bold cursor-pointer"
                                 >
                                     ✕
                                 </button>
@@ -509,8 +509,8 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 </div>
 
                 {/* 🚫 Restricted Countries */}
-                <div className="p-3 bg-white rounded border border-amber-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">🚫 Restricted Countries (Optional - comma separated or press Enter)</label>
+                <div className="p-3 bg-slate-700/40 rounded border border-amber-500/40">
+                    <label className="block text-sm font-medium text-slate-100 mb-2">🚫 Restricted Countries (Optional - comma separated or press Enter)</label>
                     <div className="flex gap-2 mb-2">
                         <input
                             type="text"
@@ -519,16 +519,16 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                             onKeyDown={handleCountryKeyDown}
                             onBlur={handleCountryBlur}
                             placeholder="e.g., BR, AU, NZ, TR"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                            className="flex-1 px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
                         />
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {restrictedCountries.map((country, idx) => (
-                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-100 rounded-full text-sm">
+                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm">
                                 {country}
                                 <button
                                     onClick={() => handleRemoveCountry(idx)}
-                                    className="text-red-600 hover:text-red-800 font-bold cursor-pointer"
+                                    className="text-red-300 hover:text-red-800 font-bold cursor-pointer"
                                 >
                                     ✕
                                 </button>
@@ -538,10 +538,10 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 </div>
 
                 {/* ============ SCHEDULE (OPTIONAL) ============ */}
-                <div className="p-4 bg-purple-50 rounded-lg border border-purple-300">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">📅 Schedule (Optional)</h3>
+                <div className="p-4 bg-slate-700/40 rounded-lg border border-purple-500/40">
+                    <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">📅 Schedule (Optional)</h3>
 
-                    <label className="flex items-center text-sm font-medium text-gray-700 mb-4 cursor-pointer">
+                    <label className="flex items-center text-sm font-medium text-slate-100 mb-4 cursor-pointer">
                         <input
                             type="checkbox"
                             checked={withSchedule}
@@ -554,22 +554,22 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                     {withSchedule && (
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">From</label>
                                 <input
                                     type="datetime-local"
                                     value={scheduleFrom}
                                     onChange={(e) => setScheduleFrom(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">To</label>
                                 <input
                                     type="datetime-local"
                                     value={scheduleTo}
                                     onChange={(e) => setScheduleTo(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
                         </div>
@@ -577,27 +577,27 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 </div>
 
                 {/* ============ TRIGGER ============ */}
-                <div className="p-4 bg-amber-50 rounded-lg border border-amber-300">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">🎯 Trigger</h3>
+                <div className="p-4 bg-slate-700/40 rounded-lg border border-amber-500/40">
+                    <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">🎯 Trigger</h3>
 
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Min Deposit (EUR) *</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR) *</label>
                                 <input
                                     type="number"
                                     value={minimumAmountEUR}
                                     onChange={(e) => setMinimumAmountEUR(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
                                 <select
                                     value={triggerType}
                                     onChange={(e) => setTriggerType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 >
                                     <option value="deposit">Deposit</option>
                                     <option value="external">External</option>
@@ -606,18 +606,18 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Duration</label>
                                 <input
                                     type="text"
                                     value={duration}
                                     onChange={(e) => setDuration(e.target.value)}
                                     placeholder="e.g., 7d"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
 
                             <div>
-                                <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                                <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={iterationsOptional}
@@ -631,7 +631,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                                         type="number"
                                         value={iterations}
                                         onChange={(e) => setIterations(parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white mt-1"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-slate-100 bg-white mt-1"
                                     />
                                 )}
                             </div>
@@ -640,39 +640,39 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 </div>
 
                 {/* ============ CONFIG ============ */}
-                <div className="p-4 bg-green-50 rounded-lg border border-green-300">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">⚙️ Config</h3>
+                <div className="p-4 bg-slate-700/40 rounded-lg border border-green-500/40">
+                    <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">⚙️ Config</h3>
 
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cost (EUR) *
-                                    {loadingAdmin && <span className="text-xs text-indigo-600 ml-2">Loading table...</span>}
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Cost (EUR) *
+                                    {loadingAdmin && <span className="text-xs text-indigo-400 ml-2">Loading table...</span>}
                                 </label>
                                 <input
                                     type="number"
                                     value={costEUR}
                                     onChange={(e) => handleCostChange(parseFloat(e.target.value))}
                                     step="0.01"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">💡 Enter cost to auto-load pricing table</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Bets *</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Bets *</label>
                                 <input
                                     type="number"
                                     value={maximumBets}
                                     onChange={(e) => setMaximumBets(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
                         </div>
 
                         {/* Up To Feature */}
-                        <div className="p-3 bg-white rounded border border-green-200 mt-4">
-                            <label className="flex items-center text-sm font-medium text-gray-700 mb-4 cursor-pointer">
+                        <div className="p-3 bg-slate-700/40 rounded border border-green-500/40 mt-4">
+                            <label className="flex items-center text-sm font-medium text-slate-100 mb-4 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={upTo}
@@ -683,12 +683,12 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                             </label>
 
                             {upTo && (
-                                <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">MIN FS AMOUNT per Currency</label>
+                                <div className="mt-4 p-3 bg-slate-800/50 rounded border border-green-500/40">
+                                    <label className="block text-sm font-semibold text-slate-100 mb-3">MIN FS AMOUNT per Currency</label>
                                     <div className="grid grid-cols-3 gap-3">
                                         {CURRENCIES.map(curr => (
                                             <div key={curr}>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">{curr}</label>
+                                                <label className="block text-xs font-medium text-slate-300 mb-1">{curr}</label>
                                                 <input
                                                     type="number"
                                                     value={minFsAmount[curr] || 0}
@@ -697,7 +697,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                                                         [curr]: parseFloat(e.target.value) || 0
                                                     })}
                                                     step="1"
-                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-gray-900 bg-white text-sm"
+                                                    className="w-full px-2 py-1 border border-slate-600 rounded text-slate-100 bg-slate-900/60 text-sm"
                                                 />
                                             </div>
                                         ))}
@@ -708,31 +708,31 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Brand</label>
                                 <input
                                     type="text"
                                     value={brand}
                                     onChange={(e) => setBrand(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
                                 <input
                                     type="text"
                                     value={configType}
                                     onChange={(e) => setConfigType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Category</label>
                                 <select
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 >
                                     <option value="games">Games</option>
                                     <option value="live_casino">Live Casino</option>
@@ -741,39 +741,39 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Max Withdraw (EUR) *</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Withdraw (EUR) *</label>
                                 <input
                                     type="number"
                                     value={maximumWithdrawEUR}
                                     onChange={(e) => setMaximumWithdrawEUR(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Game Name *</label>
+                            <label className="block text-sm font-medium text-slate-100 mb-1">Game Name *</label>
                             <input
                                 type="text"
                                 value={game}
                                 onChange={(e) => setGame(e.target.value)}
                                 placeholder="e.g., Bigger Bass Blizzard - Christmas Catch"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
+                            <label className="block text-sm font-medium text-slate-100 mb-1">Expiry</label>
                             <input
                                 type="text"
                                 value={expiry}
                                 onChange={(e) => setExpiry(e.target.value)}
                                 placeholder="e.g., 7d"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                             />
                         </div>
 
-                        <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                        <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={withdrawActive}

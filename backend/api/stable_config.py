@@ -73,7 +73,10 @@ def save_stable_config(config: StableConfigCreate, db: Session = Depends(get_db)
 def get_stable_config(provider: str, db: Session = Depends(get_db)):
     """
     Retrieve stable configuration for a specific provider.
+    Converts JSON string proportions to table structure.
     """
+    import json
+
     config = db.query(StableConfig).filter(
         StableConfig.provider == provider.upper()
     ).first()
@@ -81,6 +84,34 @@ def get_stable_config(provider: str, db: Session = Depends(get_db)):
     if not config:
         raise HTTPException(
             status_code=404, detail=f"Config not found for provider: {provider}")
+
+    # Convert proportions from JSON strings to table structures
+    try:
+        if config.casino_proportions and isinstance(config.casino_proportions, str):
+            proportions_obj = json.loads(config.casino_proportions)
+            # Wrap in table structure for frontend
+            config.casino_proportions = [
+                {
+                    "id": "1",
+                    "name": "Casino Proportions",
+                    "values": proportions_obj
+                }
+            ]
+
+        if config.live_casino_proportions and isinstance(config.live_casino_proportions, str):
+            proportions_obj = json.loads(config.live_casino_proportions)
+            # Wrap in table structure for frontend
+            config.live_casino_proportions = [
+                {
+                    "id": "2",
+                    "name": "Live Casino Proportions",
+                    "values": proportions_obj
+                }
+            ]
+    except (json.JSONDecodeError, TypeError):
+        # If JSON parsing fails, leave as empty
+        config.casino_proportions = []
+        config.live_casino_proportions = []
 
     return config
 

@@ -563,6 +563,15 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         json_output["trigger"]["segments"] = template.segments
 
     # Add config section
+    extra_data = {
+        "category": template.category,
+        "game": template.bonus_type,
+    }
+
+    # Add proportions from config_extra if available
+    if template.config_extra and "proportions" in template.config_extra:
+        extra_data["proportions"] = template.config_extra["proportions"]
+
     json_output["config"] = {
         "cost": template.maximum_amount,
         "multiplier": template.maximum_amount,
@@ -572,10 +581,7 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         "type": template.bonus_type,
         "category": template.category,
         "maximumWithdraw": maximum_withdraw_formatted,
-        "extra": {
-            "category": template.category,
-            "game": template.bonus_type  # Get from template data
-        }
+        "extra": extra_data
     }
 
     # Add type
