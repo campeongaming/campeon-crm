@@ -135,7 +135,10 @@ export default function OptimizationTeam() {
             console.log('Fetched bonus JSON with translations:', bonusJson);
 
             // Display in editor
-            const jsonString = JSON.stringify(bonusJson, null, 2);
+            // Backend returns a string, so use it directly; if it's an object, stringify it
+            const jsonString = typeof bonusJson === 'string'
+                ? bonusJson
+                : JSON.stringify(bonusJson, null, 2);
             setJsonOutput(jsonString);
 
             // Validate
@@ -225,20 +228,20 @@ export default function OptimizationTeam() {
 
             {/* Search by Bonus ID */}
             <div className="bg-slate-700/30 border border-slate-600 rounded p-4">
-                <h3 className="text-lg font-semibold text-blue-400 mb-3">🔍 Search by Bonus ID</h3>
+                <h3 className="text-lg font-semibold text-purple-400 mb-3">🔍 Search by Bonus ID</h3>
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={searchId}
                         onChange={(e) => setSearchId(e.target.value)}
                         placeholder="Enter bonus ID..."
-                        className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:border-blue-500"
+                        className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:border-purple-500"
                         onKeyPress={(e) => e.key === 'Enter' && handleSearchBonus()}
                     />
                     <button
                         onClick={handleSearchBonus}
                         disabled={loading}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-semibold rounded transition-colors"
+                        className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 text-white font-semibold rounded transition-colors"
                     >
                         {loading ? 'Searching...' : 'Search'}
                     </button>
@@ -246,12 +249,12 @@ export default function OptimizationTeam() {
             </div>
 
             {/* Month Navigation */}
-            <div className="bg-gradient-to-r from-slate-700/40 to-slate-600/40 border border-slate-500 rounded-lg p-6 shadow-lg">
+            <div className="bg-gradient-to-r from-purple-700/30 to-purple-600/30 border border-purple-500 rounded-lg p-6 shadow-lg">
                 <h3 className="text-lg font-semibold text-purple-400 mb-6">📅 Browse by Month</h3>
                 <div className="flex items-center justify-between gap-8">
                     <button
                         onClick={handlePreviousMonth}
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 transform"
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 transform"
                     >
                         ← Previous Month
                     </button>
@@ -265,7 +268,7 @@ export default function OptimizationTeam() {
                     </div>
                     <button
                         onClick={handleNextMonth}
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 transform"
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 transform"
                     >
                         Next Month →
                     </button>
@@ -274,7 +277,7 @@ export default function OptimizationTeam() {
 
             {/* Bonuses List for Selected Month */}
             <div className="bg-slate-700/30 border border-slate-600 rounded p-4">
-                <h3 className="text-lg font-semibold text-yellow-400 mb-3">
+                <h3 className="text-lg font-semibold text-purple-400 mb-3">
                     📋 Bonuses Created in {MONTHS[selectedMonth]} {selectedYear}
                 </h3>
 
@@ -285,7 +288,7 @@ export default function OptimizationTeam() {
                         value={bonusSearchQuery}
                         onChange={(e) => setBonusSearchQuery(e.target.value)}
                         placeholder="🔍 Search bonus by ID..."
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-yellow-500"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-purple-500"
                     />
                 </div>
 
@@ -339,8 +342,8 @@ export default function OptimizationTeam() {
             {/* JSON Output Section */}
             {jsonOutput && (
                 <div className="space-y-3">
-                    <div className="bg-slate-700 border border-slate-600 rounded p-4">
-                        <h3 className="font-semibold text-slate-300 mb-3">Generated JSON Output (Editable)</h3>
+                    <div className="bg-slate-700 border border-purple-600 rounded p-4">
+                        <h3 className="font-semibold text-purple-300 mb-3">Generated JSON Output (Editable)</h3>
                         <div className="border border-slate-600 rounded bg-slate-900 flex overflow-hidden" style={{ height: 'calc(100vh - 400px)', maxHeight: '90vh' }}>
                             {/* Line Numbers Column */}
                             <div
@@ -391,7 +394,7 @@ export default function OptimizationTeam() {
                                     setValidationErrors(errors);
                                 }}
                                 onScroll={(e) => setScrollTop((e.target as HTMLTextAreaElement).scrollTop)}
-                                className="flex-1 bg-slate-900 p-4 text-base text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                                className="flex-1 bg-slate-900 p-4 text-base text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-600/80 resize-none"
                                 style={{
                                     lineHeight: '1.6',
                                     tabSize: 2,
@@ -406,11 +409,11 @@ export default function OptimizationTeam() {
 
                     {/* Validation Errors */}
                     {validationErrors.length > 0 && (
-                        <div className="bg-red-900/30 border border-red-600 rounded p-4">
-                            <h4 className="font-semibold text-red-400 mb-3">⚠️ Validation Errors ({validationErrors.length})</h4>
+                        <div className="bg-purple-900/30 border border-purple-600 rounded p-4">
+                            <h4 className="font-semibold text-purple-400 mb-3">⚠️ Validation Errors ({validationErrors.length})</h4>
                             <div className="space-y-2">
                                 {validationErrors.map((error, idx) => (
-                                    <div key={idx} className="text-red-300 text-sm">
+                                    <div key={idx} className="text-purple-300 text-sm">
                                         <span className="font-semibold">{error.field}:</span> {error.message}
                                     </div>
                                 ))}
@@ -428,7 +431,7 @@ export default function OptimizationTeam() {
                         <button
                             onClick={copyToClipboard}
                             disabled={validationErrors.length > 0}
-                            className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-700 disabled:opacity-50 text-white rounded font-semibold transition-colors"
+                            className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-700 disabled:opacity-50 text-white rounded font-semibold transition-colors"
                         >
                             📋 Copy to Clipboard
                         </button>
@@ -438,14 +441,14 @@ export default function OptimizationTeam() {
                                 saveAs(blob, `${selectedBonusId}.json`);
                             }}
                             disabled={validationErrors.length > 0}
-                            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white rounded font-semibold transition-colors"
+                            className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 disabled:opacity-50 text-white rounded font-semibold transition-colors"
                         >
                             ⬇️ Download JSON
                         </button>
                         <button
                             onClick={downloadAsZip}
                             disabled={validationErrors.length > 0}
-                            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:opacity-50 text-white rounded font-semibold transition-colors"
+                            className="flex-1 px-4 py-2 bg-pink-600 hover:bg-pink-700 disabled:bg-pink-800 disabled:opacity-50 text-white rounded font-semibold transition-colors"
                         >
                             📦 Download as ZIP
                         </button>
@@ -456,8 +459,8 @@ export default function OptimizationTeam() {
             {/* Messages */}
             {message && (
                 <div className={`p-4 rounded text-center border ${message.includes('✅')
-                    ? 'bg-green-700/20 border-green-600 text-green-300'
-                    : 'bg-slate-700 border-slate-600 text-slate-300'
+                    ? 'bg-purple-900/30 border-purple-600 text-purple-300'
+                    : 'bg-purple-900/30 border-purple-600 text-purple-300'
                     }`}>
                     {message}
                 </div>

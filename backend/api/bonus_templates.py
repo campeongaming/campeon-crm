@@ -568,11 +568,35 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         "game": template.bonus_type,
     }
 
-    # Add proportions from config_extra if available
-    if template.config_extra and "proportions" in template.config_extra:
-        extra_data["proportions"] = template.config_extra["proportions"]
+    # Fetch proportions if needed
+    proportions_text = None
+    if template.config_extra:
+        import json as json_parser
+        try:
+            if isinstance(template.config_extra, str):
+                config_extra_parsed = json_parser.loads(template.config_extra)
+            else:
+                config_extra_parsed = template.config_extra
 
-    json_output["config"] = {
+            proportions_type = config_extra_parsed.get('proportions_type')
+
+            if proportions_type:
+                admin_config = db.query(StableConfig).filter(
+                    StableConfig.provider == 'PRAGMATIC'
+                ).first()
+
+                if admin_config:
+                    if proportions_type == 'casino' and admin_config.casino_proportions:
+                        proportions_text = admin_config.casino_proportions.strip()
+                    elif proportions_type == 'live_casino' and admin_config.live_casino_proportions:
+                        proportions_text = admin_config.live_casino_proportions.strip()
+        except:
+            pass
+
+    # Build the config section manually as a string
+    import json as json_lib
+
+    config_json = json_lib.dumps({
         "cost": template.maximum_amount,
         "multiplier": template.maximum_amount,
         "maximumBets": template.maximum_stake_to_wager,
@@ -581,10 +605,43 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         "type": template.bonus_type,
         "category": template.category,
         "maximumWithdraw": maximum_withdraw_formatted,
-        "extra": extra_data
-    }
+    }, indent=2)
 
-    # Add type
-    json_output["type"] = "bonus_template"
+    # Remove the closing brace from config
+    config_json = config_json.rstrip()[:-1]  # Remove last }
 
-    return json_output
+    # Add extra section manually with proportions injected
+    config_json += ',\n    "extra": {\n'
+    config_json += '      "category": "' + \
+        str(extra_data.get("category", "")) + '"'
+
+    # Only include game field for free_spins bonus type
+    if template.bonus_type == 'free_spins' and extra_data.get("game"):
+        config_json += ',\n      "game": "' + \
+            str(extra_data.get("game", "")) + '"'
+
+    if proportions_text:
+        config_json += ',\n      "proportions": {' + proportions_text + '}'
+
+    config_json += '\n    }\n'
+
+    # Add expiry field if present
+    if template.expiry:
+        config_json += ',\n    "expiry": "' + str(template.expiry) + '"\n'
+    else:
+        config_json += '\n'
+
+    config_json += '  }'
+
+    # Now build complete JSON manually
+    json_str = '{\n'
+    json_str += '  "id": "' + json_lib.dumps(template.id)[1:-1] + '",\n'
+    json_str += '  "trigger": ' + \
+        json_lib.dumps(json_output["trigger"], indent=2).replace(
+            '\n', '\n  ') + ',\n'
+    json_str += '  "config": ' + config_json + ',\n'
+    json_str += '  "type": "bonus_template"\n'
+    json_str += '}'
+
+    from fastapi.responses import Response
+    return Response(content=json_str, media_type="application/json")

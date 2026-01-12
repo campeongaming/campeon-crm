@@ -9,8 +9,8 @@ import OptimizationTeam from '@/components/OptimizationTeam';
 
 const tabs = [
     { id: 'admin', label: '⚙️ Admin Setup', active: 'from-red-600 to-red-700', glow: 'shadow-red-500/30' },
-    { id: 'casino', label: '🎰 Create Bonus', active: 'from-blue-600 to-blue-700', glow: 'shadow-blue-500/30' },
     { id: 'browse', label: '📅 Browse Bonuses', active: 'from-cyan-600 to-cyan-700', glow: 'shadow-cyan-500/30' },
+    { id: 'casino', label: '🎰 Create Bonus', active: 'from-blue-600 to-blue-700', glow: 'shadow-blue-500/30' },
     { id: 'translation', label: '🌐 Translation Team', active: 'from-green-600 to-green-700', glow: 'shadow-green-500/30' },
     { id: 'optimization', label: '📊 Optimization Team', active: 'from-purple-600 to-purple-700', glow: 'shadow-purple-500/30' },
 ] as const;
