@@ -34,6 +34,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
     const [scheduleTo, setScheduleTo] = useState('');
 
     // Trigger section
+    const [withMinimumAmount, setWithMinimumAmount] = useState(false);
     const [minimumAmountEUR, setMinimumAmountEUR] = useState(50);
     const [iterations, setIterations] = useState(1);
     const [iterationsOptional, setIterationsOptional] = useState(false);
@@ -303,7 +304,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
         const newErrors: string[] = [];
 
         if (!gameId.trim()) newErrors.push('Game ID is required');
-        if (minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
+        if (withMinimumAmount && minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
         if (costEUR <= 0) newErrors.push('Cost must be > 0');
         if (maximumBets <= 0) newErrors.push('Maximum bets must be > 0');
         if (maximumWithdrawEUR <= 0) newErrors.push('Maximum withdraw must be > 0');
@@ -338,8 +339,12 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
             bonusJson.trigger = {
                 type: triggerType,
                 duration: duration,
-                minimumAmount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount'),
             };
+
+            // Only include minimumAmount if enabled
+            if (withMinimumAmount) {
+                bonusJson.trigger.minimumAmount = buildCurrencyMap(minimumAmountEUR, 'minimum_amount');
+            }
 
             if (iterationsOptional && iterations > 1) {
                 bonusJson.trigger.iterations = iterations;
@@ -378,7 +383,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 bonus_type: triggerType,
                 trigger_type: triggerType,
                 trigger_duration: duration,
-                trigger_iterations: iterationsOptional ? iterations : 1,
+                ...(iterationsOptional && { trigger_iterations: iterations }),
                 category: category,
                 provider: provider,
                 brand: brand,
@@ -387,7 +392,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 expiry: expiry,
                 percentage: 100,
                 wagering_multiplier: 1,
-                minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount'),
+                ...(withMinimumAmount && { minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount') }),
                 cost: buildCurrencyMap(costEUR, 'cost'),
                 multiplier: buildMultiplierMap(),
                 maximum_bets: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
@@ -581,9 +586,20 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                     <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">🎯 Trigger</h3>
 
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Require Minimum Deposit Checkbox */}
+                        <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={withMinimumAmount}
+                                onChange={(e) => setWithMinimumAmount(e.target.checked)}
+                                className="mr-2 w-4 h-4"
+                            />
+                            Require Minimum Deposit
+                        </label>
+
+                        {withMinimumAmount && (
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR) *</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR)</label>
                                 <input
                                     type="number"
                                     value={minimumAmountEUR}
@@ -591,7 +607,9 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                                     className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
+                        )}
 
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
                                 <select
