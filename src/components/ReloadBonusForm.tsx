@@ -25,7 +25,7 @@ const SUPPORTED_LOCALES = ['en', 'de', 'fi', 'no', 'pt', 'fr', 'es', 'it', 'pl',
 
 export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () => void }) {
     // ============ STATE ============
-    const [provider, setProvider] = useState('PRAGMATIC');
+    const [provider, setProvider] = useState('SYSTEM');
     const [adminConfig, setAdminConfig] = useState<AdminConfig | null>(null);
     const [loadingAdmin, setLoadingAdmin] = useState(false);
 
@@ -82,11 +82,6 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                 const config = response.data as AdminConfig;
 
                 console.log('📦 Fetched COMMON tables (Amounts, Stakes, Withdrawals, Wager, Proportions)');
-                console.log('📊 Response keys:', Object.keys(config));
-                console.log('📊 casino_proportions in response?', 'casino_proportions' in config);
-                console.log('📊 casino_proportions value:', config.casino_proportions);
-                console.log('📊 is Array?', Array.isArray(config.casino_proportions));
-                console.log('📊 has [0]?', config.casino_proportions?.[0]);
 
                 // Extract first table from each array and set the selected tables
                 if (config.minimum_stake_to_wager && Array.isArray(config.minimum_stake_to_wager) && config.minimum_stake_to_wager[0]) {
@@ -108,11 +103,6 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                 if (config.casino_proportions && Array.isArray(config.casino_proportions) && config.casino_proportions[0]) {
                     setSelectedCasinoProportionsTable(config.casino_proportions[0].values);
                     console.log('✅ Set Casino Proportions:', config.casino_proportions[0].values);
-                } else {
-                    console.log('❌ Casino Proportions NOT SET - condition failed:');
-                    console.log('   config.casino_proportions truthy?', !!config.casino_proportions);
-                    console.log('   is Array?', Array.isArray(config.casino_proportions));
-                    console.log('   has [0]?', config.casino_proportions?.[0]);
                 }
                 if (config.live_casino_proportions && Array.isArray(config.live_casino_proportions) && config.live_casino_proportions[0]) {
                     setSelectedLiveCasinoProportionsTable(config.live_casino_proportions[0].values);
@@ -239,13 +229,6 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
         if (!validate()) return;
 
         try {
-            // DEBUG: Log proportions state before payload creation
-            console.log('🔍 DEBUG PROPORTIONS:');
-            console.log('  proportionsType:', proportionsType);
-            console.log('  selectedCasinoProportionsTable exists?', !!selectedCasinoProportionsTable);
-            console.log('  selectedCasinoProportionsTable keys:', selectedCasinoProportionsTable ? Object.keys(selectedCasinoProportionsTable).slice(0, 5) : 'NULL');
-            console.log('  selectedLiveCasinoProportionsTable exists?', !!selectedLiveCasinoProportionsTable);
-
             const payload: any = {
                 id: gameId,
                 bonus_type: 'reload',
@@ -277,13 +260,11 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                 config_extra: {
                     category: category,
                     proportions_type: proportionsType,
+                    ...(proportionsType === 'casino' && selectedCasinoProportionsTable && { proportions: selectedCasinoProportionsTable }),
+                    ...(proportionsType === 'live_casino' && selectedLiveCasinoProportionsTable && { proportions: selectedLiveCasinoProportionsTable }),
                 },
                 expiry: expiry,
             };
-
-            // DEBUG: Log final config_extra
-            console.log('📤 PAYLOAD config_extra:', payload.config_extra);
-            console.log('📤 Full payload being sent:', JSON.stringify(payload, null, 2));
 
             // Save to database
             await axios.post('http://localhost:8000/api/bonus-templates', payload);

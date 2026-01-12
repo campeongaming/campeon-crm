@@ -28,11 +28,19 @@ def save_stable_config(config: StableConfigCreate, db: Session = Depends(get_db)
                     for item in config_data[field]
                 ]
 
-        # Save proportions exactly as inputted - no conversion
-        if not config_data.get('casino_proportions'):
+        # Convert proportions to JSON strings if they're dicts/lists
+        if config_data.get('casino_proportions'):
+            if isinstance(config_data['casino_proportions'], (dict, list)):
+                config_data['casino_proportions'] = json.dumps(
+                    config_data['casino_proportions'])
+        else:
             config_data['casino_proportions'] = ""
 
-        if not config_data.get('live_casino_proportions'):
+        if config_data.get('live_casino_proportions'):
+            if isinstance(config_data['live_casino_proportions'], (dict, list)):
+                config_data['live_casino_proportions'] = json.dumps(
+                    config_data['live_casino_proportions'])
+        else:
             config_data['live_casino_proportions'] = ""
 
         # Check if config exists for this provider
@@ -109,16 +117,10 @@ def get_stable_config_with_tables(provider: str, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=404, detail=f"Config not found for provider: {provider}")
 
-    # DEBUG
-    print(f"\n🔧 GET /with-tables endpoint for {provider}:")
-    print(f"   casino_proportions from DB: {config.casino_proportions[:100] if config.casino_proportions else 'None'}")
-
     # Convert proportions from JSON strings to table structures for frontend forms
     try:
         if config.casino_proportions and isinstance(config.casino_proportions, str):
-            print(f"   Attempting to parse casino_proportions as JSON...")
             proportions_obj = json.loads(config.casino_proportions)
-            print(f"   ✅ Successfully parsed! Type: {type(proportions_obj)}, Keys: {list(proportions_obj.keys())[:5] if isinstance(proportions_obj, dict) else 'N/A'}")
             # Wrap in table structure for bonus creation form
             config.casino_proportions = [
                 {
@@ -127,13 +129,9 @@ def get_stable_config_with_tables(provider: str, db: Session = Depends(get_db)):
                     "values": proportions_obj
                 }
             ]
-        elif config.casino_proportions:
-            print(f"   ❌ casino_proportions is not a string, type: {type(config.casino_proportions)}")
 
         if config.live_casino_proportions and isinstance(config.live_casino_proportions, str):
-            print(f"   Attempting to parse live_casino_proportions as JSON...")
             proportions_obj = json.loads(config.live_casino_proportions)
-            print(f"   ✅ Successfully parsed! Type: {type(proportions_obj)}")
             # Wrap in table structure for bonus creation form
             config.live_casino_proportions = [
                 {
@@ -142,10 +140,7 @@ def get_stable_config_with_tables(provider: str, db: Session = Depends(get_db)):
                     "values": proportions_obj
                 }
             ]
-        elif config.live_casino_proportions:
-            print(f"   ❌ live_casino_proportions is not a string, type: {type(config.live_casino_proportions)}")
-    except (json.JSONDecodeError, TypeError) as e:
-        print(f"   ❌ JSON parsing error: {e}")
+    except (json.JSONDecodeError, TypeError):
         # If JSON parsing fails, leave as empty
         config.casino_proportions = []
         config.live_casino_proportions = []

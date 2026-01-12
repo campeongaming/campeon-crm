@@ -527,6 +527,11 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         "id": template.id,
     }
 
+    # DEBUG: Check schedule fields
+    print(f"DEBUG: template.schedule_from = {template.schedule_from}")
+    print(f"DEBUG: template.schedule_to = {template.schedule_to}")
+    print(f"DEBUG: template.schedule_type = {template.schedule_type}")
+
     # Add schedule right after id if it exists
     if template.schedule_from and template.schedule_to:
         json_output["schedule"] = {
@@ -534,6 +539,10 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
             "from": template.schedule_from,
             "to": template.schedule_to
         }
+        print(f"DEBUG: Added schedule to JSON: {json_output['schedule']}")
+    else:
+        print(
+            f"DEBUG: Schedule NOT added - schedule_from: {bool(template.schedule_from)}, schedule_to: {bool(template.schedule_to)}")
 
     # Add trigger section
     json_output["trigger"] = {}
@@ -636,6 +645,14 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     # Now build complete JSON manually
     json_str = '{\n'
     json_str += '  "id": "' + json_lib.dumps(template.id)[1:-1] + '",\n'
+
+    # Add schedule if it exists
+    if "schedule" in json_output:
+        json_str += '  "schedule": ' + \
+            json_lib.dumps(json_output["schedule"], indent=2).replace(
+                '\n', '\n  ') + ',\n'
+        print(f"DEBUG: Schedule added to JSON string")
+
     json_str += '  "trigger": ' + \
         json_lib.dumps(json_output["trigger"], indent=2).replace(
             '\n', '\n  ') + ',\n'

@@ -495,18 +495,21 @@ export default function AdminPanel() {
                                 </div>
                             )}
                             {activeTab === 'proportions' && (
-                                <div className="space-y-4">
-                                    <div className="p-3 bg-slate-700/30 border border-yellow-500/30 rounded">
-                                        <p className="text-xs text-yellow-400">ℹ️ Proportions are global and independent of provider selection</p>
-                                    </div>
+                                <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="p-4 bg-slate-800/40 border border-slate-700 rounded-lg">
                                             <h4 className="text-sm font-semibold text-slate-300 mb-3">🎰 Casino Proportions</h4>
-                                            <p className="text-xs text-slate-400 mb-3">Enter game names comma-separated</p>
+                                            <p className="text-xs text-slate-400 mb-3">Enter bet distribution for casino games</p>
                                             <textarea
-                                                value={pragmaticCasinoProportions}
-                                                onChange={(e) => setPragmaticCasinoProportions(e.target.value)}
-                                                placeholder='e.g., SLOT_GAMES, VIRTUAL_GAMES, TABLE_GAMES, BINGO'
+                                                value={selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions}
+                                                onChange={(e) => {
+                                                    if (selectedProvider === 'PRAGMATIC') {
+                                                        setPragmaticCasinoProportions(e.target.value);
+                                                    } else {
+                                                        setBetsoftCasinoProportions(e.target.value);
+                                                    }
+                                                }}
+                                                placeholder='e.g., {"SLOT_GAMES": 100, "VIRTUAL_GAMES": 50, ...}'
                                                 className="w-full px-3 py-2 border border-slate-600 rounded-lg bg-slate-700/50 text-slate-200 text-sm font-mono"
                                                 rows={28}
                                             />
@@ -514,11 +517,17 @@ export default function AdminPanel() {
 
                                         <div className="p-4 bg-slate-800/40 border border-slate-700 rounded-lg">
                                             <h4 className="text-sm font-semibold text-slate-300 mb-3">🎭 Live Casino Proportions</h4>
-                                            <p className="text-xs text-slate-400 mb-3">Enter game names comma-separated</p>
+                                            <p className="text-xs text-slate-400 mb-3">Enter bet distribution for live casino games</p>
                                             <textarea
-                                                value={pragmaticLiveCasinoProportions}
-                                                onChange={(e) => setPragmaticLiveCasinoProportions(e.target.value)}
-                                                placeholder='e.g., ROULETTE, BLACKJACK, BACCARAT, POKER'
+                                                value={selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions}
+                                                onChange={(e) => {
+                                                    if (selectedProvider === 'PRAGMATIC') {
+                                                        setPragmaticLiveCasinoProportions(e.target.value);
+                                                    } else {
+                                                        setBetsoftLiveCasinoProportions(e.target.value);
+                                                    }
+                                                }}
+                                                placeholder='e.g., {"CASINO_GAMES": 20, "LUCKY_GAMES": 50, ...}'
                                                 className="w-full px-3 py-2 border border-slate-600 rounded-lg bg-slate-700/50 text-slate-200 text-sm font-mono"
                                                 rows={28}
                                             />
