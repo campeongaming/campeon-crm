@@ -18,7 +18,10 @@
    - Use `Math.abs(table.values.EUR - inputValue) < 0.001` for floating-point tolerance
    - Always use table's EUR value for `"*"` (fallback) to avoid precision errors
 4. **Multilingual JSON Storage**: `{"*": eurValue, "EUR": val, "USD": val, ...}` structure
-5. **Optional Schedules**: Only included if both `schedule_from` AND `schedule_to` provided
+5. **Optional Fields Pattern**: Fields with checkboxes (e.g., `withMinimumAmount`, `withSchedule`, `iterationsOptional`)
+   - Conditionally include in payload using spread operator: `...(withMinimumAmount && { minimum_amount: ... })`
+   - Only add to payload/JSON if flag is enabled
+   - Prevents unwanted null/default values in output
 
 ---
 
@@ -77,6 +80,36 @@ const buildCurrencyMap = (eurValue: number, fieldName: 'cost' | 'minimum_amount'
 - ✅ Always use `table.values.EUR` for the `"*"` fallback
 - ❌ Don't use state/async for lookups - search inline at point of use
 
+### Optional Fields Pattern (Critical)
+
+Use checkboxes to conditionally include fields. Pattern applied to: `minimumAmount`, `iterations`, `schedule`, `restrictedCountries`.
+
+**State + Validation + Payload**:
+```typescript
+// State
+const [withMinimumAmount, setWithMinimumAmount] = useState(false);
+const [minimumAmountEUR, setMinimumAmountEUR] = useState(50);
+
+// Validation - only check if enabled
+if (withMinimumAmount && minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
+
+// JSON generation - only include if enabled
+if (withMinimumAmount) {
+    bonusJson.trigger.minimumAmount = buildCurrencyMap(minimumAmountEUR, 'minimum_amount');
+}
+
+// Payload - use spread operator for conditional inclusion
+...(withMinimumAmount && { minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount') }),
+...(iterationsOptional && { trigger_iterations: iterations }),
+```
+
+**Key Points**:
+- ✅ State: Boolean flag (checked/unchecked)
+- ✅ Validation: Only validate if flag is true
+- ✅ JSON generation: Conditionally add to bonusJson
+- ✅ Payload: Use spread operator to avoid null/default values
+- ❌ Never include optional fields unconditionally in payload
+
 ### Multi-Currency Structure
 
 All numeric fields follow this pattern:
@@ -115,11 +148,16 @@ Frontend maps: `CURRENCIES = ['EUR', 'USD', 'CAD', ..., 'UZS']` (21 total)
 ### AwardFreeSpins Component Flow
 
 1. **User enters cost EUR**: 0.12 → Fetches admin config on mount
-2. **User fills form fields**: Trigger name, game, etc.
-3. **User submits**: `handleSave()` calls `buildCurrencyMap(0.12, 'cost')`
-4. **Lookup executes**: Searches `adminConfig.cost` array for EUR ≈ 0.12 → finds Table 2
-5. **JSON built**: Uses all 21 currency values from Table 2
-6. **POST to /api/bonus-templates** with complete payload
+2. **User enables optional fields**: Check "Require Minimum Deposit", "Iterations", etc.
+3. **User fills form fields**: Trigger name, game, schedule dates (if enabled)
+4. **User submits**: `handleSave()` calls `buildCurrencyMap(0.12, 'cost')`
+5. **Lookup executes**: Searches `adminConfig.cost` array for EUR ≈ 0.12 → finds Table 2
+6. **JSON built**: 
+   - Always includes: schedule (if dates provided), trigger base, cost, multiplier, config
+   - Conditionally includes: minimumAmount (if `withMinimumAmount`), iterations (if `iterationsOptional`)
+7. **Payload built**: Uses spread operator to exclude unchecked optional fields
+8. **POST to /api/bonus-templates** with complete payload
+9. **Backend generates JSON**: Uses manual string building to ensure all fields appear
 
 ### Database Schema Key Points
 
@@ -129,6 +167,36 @@ Frontend maps: `CURRENCIES = ['EUR', 'USD', 'CAD', ..., 'UZS']` (21 total)
   - `trigger_name`, `trigger_description`: `Dict[str, str]` (localization)
   - `restricted_countries`: `List[str]`
 - **StableConfig.cost/maximum_withdraw**: JSON arrays of `[{id, name, values: {currency: value}}]`
+
+### Backend JSON Generation (Critical)
+
+The `GET /api/bonus-templates/{id}/generate-json` endpoint manually constructs the final JSON string. **IMPORTANT**: All fields must be explicitly added to the string—they don't automatically appear from the dict.
+
+```python
+# Pattern from bonus_templates.py:
+json_str = '{\n  "id": "' + template.id + '",\n'
+
+# Schedule MUST be explicitly included
+if "schedule" in json_output:
+    json_str += '  "schedule": ' + json_lib.dumps(json_output["schedule"], indent=2).replace('\n', '\n  ') + ',\n'
+
+# Trigger section
+json_str += '  "trigger": { ... },\n'
+
+# Config section with conditional fields
+if template.bonus_type == 'free_spins' and extra_data.get("game"):
+    config_json += ',\n      "game": "' + str(extra_data.get("game", "")) + '"'
+
+# Expiry conditionally included
+if template.expiry:
+    config_json += ',\n    "expiry": "' + str(template.expiry) + '"\n'
+```
+
+**Key Points**:
+- ✅ Dict operations alone are NOT enough—must add to string explicitly
+- ✅ Schedule, game, expiry all must be handled with explicit string concatenation
+- ✅ Use `if "field" in json_output:` to check before including
+- ❌ Don't rely on implicit field inclusion from dict → won't appear in final output
 
 ---
 
@@ -140,7 +208,11 @@ Frontend maps: `CURRENCIES = ['EUR', 'USD', 'CAD', ..., 'UZS']` (21 total)
 | `"*": 0.09999` in generated JSON | Use `table.values.EUR` for `"*"`, not input parameter |
 | Missing currency values in JSON | Lookup at build time, not in async state update |
 | Table not found warning | Check if `adminConfig` is loaded before `buildCurrencyMap` runs |
-| POST returns incomplete data | GET endpoint now returns full object (was returning only 4 fields) |
+| Optional field appears as default when unchecked | Use spread operator: `...(flag && { field: value })` in payload |
+| `iterations: 1` appears when checkbox unchecked | Use `...(iterationsOptional && { trigger_iterations: iterations })` |
+| `minimumAmount` in JSON when not checked | Use `...(withMinimumAmount && { minimum_amount: ... })` |
+| Schedule missing from API response | Ensure JSON string building includes schedule: `if ("schedule" in json_output) { json_str += ... }` |
+| Game field appears in non-free-spins bonuses | Conditionally include: `if (bonus_type == 'free_spins' && game) { ... }`
 
 ---
 
