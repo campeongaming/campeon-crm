@@ -84,6 +84,9 @@ class BonusTemplateCreate(BaseModel):
     expiry: str = "7d"
     config_extra: Optional[Dict[str, Any]] = None
 
+    # User notes
+    notes: Optional[str] = None
+
 
 class BonusTemplateResponse(BonusTemplateCreate):
     """Schema for bonus template responses"""
@@ -105,6 +108,7 @@ class BonusTemplatePatch(BaseModel):
     expiry: Optional[str] = None
     trigger_duration: Optional[str] = None
     trigger_iterations: Optional[int] = None
+    notes: Optional[str] = None
 
 
 class BonusTranslationCreate(BaseModel):

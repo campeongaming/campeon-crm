@@ -18,6 +18,7 @@ interface BonusFormData {
     trigger_type: string;
     category: string;
     bonus_type: string;
+    notes: string;
 }
 
 export default function SimpleBonusForm() {
@@ -33,6 +34,7 @@ export default function SimpleBonusForm() {
         trigger_type: 'reload',
         category: 'GAMES',
         bonus_type: 'cash',
+        notes: '',
     });
 
     const [loading, setLoading] = useState(false);
@@ -74,6 +76,7 @@ export default function SimpleBonusForm() {
                 provider: formData.provider,
                 brand: formData.provider,
                 bonus_type: formData.bonus_type,
+                notes: formData.notes || undefined,
             };
 
             // Only add schedule fields if both start and end dates are provided
@@ -275,6 +278,33 @@ export default function SimpleBonusForm() {
                         </div>
                     </div>
 
+                    {/* Notes */}
+                    <div className="card-base">
+                        <h3 className="text-xl font-semibold text-white mb-4">📝 Notes (Optional)</h3>
+                        <textarea
+                            name="notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                            className="input-field w-full"
+                            rows={4}
+                            placeholder="Add any notes about this bonus template..."
+                        />
+                    </div>
+                    {/* Notes */}
+                    <div className="form-section">
+                        <h3 className="section-title">📝 Notes (Optional)</h3>
+                        <div>
+                            <label className="label-text">Internal Notes</label>
+                            <textarea
+                                name="notes"
+                                value={formData.notes}
+                                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                                className="input-field"
+                                rows={4}
+                                placeholder="Add any internal notes about this bonus..."
+                            />
+                        </div>
+                    </div>
                     {/* Message */}
                     {message && (
                         <div className={`p-4 rounded-lg ${message.includes('✅') ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>

@@ -20,6 +20,7 @@ interface DepositBonusData {
     scheduleFrom: string;
     scheduleTo: string;
     eurMaxWithdraw: string;
+    notes: string;
     cost: Record<string, number>;
     multipliers: Record<string, number>;
     maximumBets: Record<string, number>;
@@ -46,6 +47,7 @@ export default function DepositBonusForm() {
         scheduleFrom: '',
         scheduleTo: '',
         eurMaxWithdraw: '100',
+        notes: '',
         cost: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
         multipliers: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
         maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
@@ -227,6 +229,7 @@ export default function DepositBonusForm() {
                         game: formData.gameName
                     }
                 },
+                notes: formData.notes || undefined,
                 type: 'bonus_template'
             };
 
@@ -256,6 +259,7 @@ export default function DepositBonusForm() {
                 scheduleFrom: '',
                 scheduleTo: '',
                 eurMaxWithdraw: '100',
+                notes: '',
                 cost: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
                 multipliers: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
                 maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
@@ -427,6 +431,19 @@ export default function DepositBonusForm() {
                         <option value="PRAGMATIC">PRAGMATIC</option>
                         <option value="BETSOFT">BETSOFT</option>
                     </select>
+                </div>
+
+                {/* Notes */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Internal Notes (Optional)</label>
+                    <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleChange}
+                        rows={3}
+                        placeholder="Add any internal notes about this bonus..."
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none resize-none"
+                    />
                 </div>
 
                 {/* Submit */}

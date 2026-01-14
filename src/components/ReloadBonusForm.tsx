@@ -23,7 +23,7 @@ interface AdminConfig {
 const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN', 'GBP', 'PLN', 'PEN', 'ZAR', 'CHF', 'NGN', 'JPY', 'AZN', 'TRY', 'KZT', 'RUB', 'UZS'];
 const SUPPORTED_LOCALES = ['en', 'de', 'fi', 'no', 'pt', 'fr', 'es', 'it', 'pl', 'ru', 'et'];
 
-export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () => void }) {
+export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { notes: string; setNotes: (value: string) => void; onBonusSaved?: () => void }) {
     // ============ STATE ============
     const [provider, setProvider] = useState('SYSTEM');
     const [adminConfig, setAdminConfig] = useState<AdminConfig | null>(null);
@@ -271,6 +271,7 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                 withdraw_active: false,
                 restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : null,
                 segments: segments.length > 0 ? segments : null,
+                notes: notes || undefined,
                 ...(withSchedule && scheduleFrom && scheduleTo && {
                     schedule_from: formatDateTimeForPayload(scheduleFrom),
                     schedule_to: formatDateTimeForPayload(scheduleTo),

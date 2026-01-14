@@ -149,11 +149,12 @@ export default function BonusBrowser() {
 
     const handleModalSave = () => {
         // Refresh the bonus list after save
-        if (selectedDay) {
+        if (selectedDay || selectedDay === 0) {
             handleBrowse();
-        } else {
+        } else if (searchId.trim()) {
             handleSearch();
         }
+        // If neither condition is met, don't refresh (avoids error message)
     };
 
     const handleDeleteBonus = async (bonusId: string) => {

@@ -176,10 +176,6 @@ export default function TranslationTeam() {
             setMessage('❌ This language code already exists');
             return;
         }
-        if (!/^[a-z]{2}(-[a-z]{2})?$/i.test(newLanguageCode)) {
-            setMessage('❌ Language code must be in format: xx or xx-YY (e.g., en, pt-BR)');
-            return;
-        }
 
         // Add custom language
         const langCode = newLanguageCode.toLowerCase();
@@ -317,14 +313,26 @@ export default function TranslationTeam() {
             if (totalChanges === 0) {
                 setMessage('⚠️ No changes made.');
             } else {
-                let changeMsg = '';
-                if (savedCount > 0) changeMsg += `Saved ${savedCount}`;
-                if (deletedCount > 0) changeMsg += `${savedCount > 0 ? ', ' : ''}Deleted ${deletedCount}`;
-                setMessage(`✅ ${changeMsg} translation(s) successfully!`);
+                setMessage('✅ Translations saved successfully!');
 
-                // Wait a moment then reload the translations to confirm they were saved
+                // Reload translations without clearing the message
                 setTimeout(async () => {
-                    await handleSelectBonus(selectedBonusId);
+                    const response = await axios.get(
+                        `http://localhost:8000/api/bonus-templates/${selectedBonusId}/translations`
+                    );
+                    const existingTranslations = response.data || [];
+                    const allLanguageCodes = [...LANGUAGES.map(l => l.code), ...customLanguages.map(l => l.code)];
+                    const updatedTranslations = allLanguageCodes.map(langCode => {
+                        const existing = existingTranslations.find(
+                            (t: any) => t.language === langCode
+                        );
+                        return {
+                            language: langCode,
+                            offer_name: existing?.name || '',
+                            offer_description: existing?.description || '',
+                        };
+                    });
+                    setTranslations(updatedTranslations);
                 }, 500);
             }
         } catch (error: any) {
@@ -498,7 +506,7 @@ export default function TranslationTeam() {
                                 <div
                                     key={lang.code}
                                     className={`p-2 rounded border flex items-center justify-between transition-all ${selectedLanguages.includes(lang.code)
-                                        ? 'bg-purple-700/40 border-purple-500 text-purple-300'
+                                        ? 'bg-blue-700/40 border-blue-500 text-blue-300'
                                         : 'bg-slate-700/50 border-slate-600 text-slate-400'
                                         }`}
                                 >
@@ -532,7 +540,7 @@ export default function TranslationTeam() {
                                     type="text"
                                     value={newLanguageCode}
                                     onChange={(e) => setNewLanguageCode(e.target.value)}
-                                    placeholder="Language code (e.g., ja, zh, pt-BR)"
+                                    placeholder="Language code (e.g., en, de, pt-BRL)"
                                     className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-amber-500"
                                 />
                                 <button
@@ -543,6 +551,13 @@ export default function TranslationTeam() {
                                     Add
                                 </button>
                             </div>
+
+                            {/* Error messages for Add button */}
+                            {message && message.includes('❌') && (
+                                <div className="mt-3 p-3 rounded text-sm border bg-red-700/20 border-red-600 text-red-300">
+                                    {message}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -643,10 +658,11 @@ export default function TranslationTeam() {
                         {loading ? 'Saving...' : 'Save Translations'}
                     </button>
 
-                    {message && (
-                        <div className={`p-4 rounded text-center border ${message.includes('✅')
+                    {/* Success messages for Save button */}
+                    {message && (message.includes('✅') || message.includes('⚠️')) && (
+                        <div className={`mt-3 p-4 rounded text-center border ${message.includes('✅')
                             ? 'bg-green-700/20 border-green-600 text-green-300'
-                            : 'bg-slate-700 border-slate-600 text-slate-300'
+                            : 'bg-yellow-700/20 border-yellow-600 text-yellow-300'
                             }`}>
                             {message}
                         </div>

@@ -66,6 +66,7 @@ def create_bonus_template(template: BonusTemplateCreate, db: Session = Depends(g
         game=template.game,
         expiry=template.expiry,
         config_extra=template.config_extra,
+        notes=template.notes,
     )
 
     db.add(db_template)

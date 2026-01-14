@@ -125,6 +125,9 @@ class BonusTemplate(Base):
     # "cash", "free_bet", "cashback"
     config_type = Column(String(50), default="free_bet")
 
+    # User notes
+    notes = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow,
                         onupdate=datetime.utcnow)

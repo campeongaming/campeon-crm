@@ -39,6 +39,7 @@ interface BonusDetails {
     config_type?: string;
     created_at?: string;
     updated_at?: string;
+    notes?: string;
     translations?: Array<{
         language: string;
         currency?: string;
@@ -70,6 +71,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
     const [percentage, setPercentage] = useState(0);
     const [wageringMultiplier, setWageringMultiplier] = useState(0);
     const [expiry, setExpiry] = useState('7d');
+    const [notes, setNotes] = useState('');
 
     useEffect(() => {
         fetchBonusDetails();
@@ -109,6 +111,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
             setPercentage(data.percentage || 0);
             setWageringMultiplier(data.wagering_multiplier || 0);
             setExpiry(data.expiry || '7d');
+            setNotes(data.notes || '');
         } catch (error: any) {
             console.error('Error fetching bonus:', error);
             console.error('Error details:', error.response?.data);
@@ -132,15 +135,13 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
                 percentage,
                 wagering_multiplier: wageringMultiplier,
                 expiry,
+                notes,
             };
 
             await axios.patch(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${bonusId}`, payload);
             setMessage('✅ Bonus updated successfully!');
             setIsEditing(false);
             if (onSave) onSave();
-            setTimeout(() => {
-                onClose();
-            }, 1500);
         } catch (error: any) {
             console.error('Error updating bonus:', error);
             setMessage(error.response?.data?.detail || 'Failed to update bonus');
@@ -152,9 +153,14 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
     const formatCurrency = (value: any): string => {
         if (!value) return 'N/A';
         if (typeof value === 'number') return `€${value.toFixed(2)}`;
-        if (typeof value === 'object' && value['*']) return `€${value['*'].toFixed(2)}`;
-        if (typeof value === 'object' && value['EUR']) return `€${value['EUR'].toFixed(2)}`;
-        return JSON.stringify(value);
+        // For objects, prioritize EUR, then *, then fallback
+        if (typeof value === 'object') {
+            const eurValue = value['EUR'] || value['*'];
+            if (eurValue !== undefined && eurValue !== null) {
+                return `€${Number(eurValue).toFixed(2)}`;
+            }
+        }
+        return 'N/A';
     };
 
     const formatText = (value: any): string => {
@@ -189,7 +195,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-4xl w-full my-8">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-6xl w-full my-8">
                 {/* Header */}
                 <div className="flex justify-between items-start mb-6">
                     <div>
@@ -209,205 +215,239 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
                     </div>
                 )}
 
-                {/* Content */}
-                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-                    {/* Schedule */}
-                    <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                        <h3 className="text-lg font-bold text-white mb-4">📅 Schedule</h3>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <label className="block text-slate-400 mb-1">Type</label>
-                                <div className="text-white">{bonus.schedule_type || 'N/A'}</div>
-                            </div>
-                            <div>
-                                <label className="block text-slate-400 mb-1">From</label>
-                                {isEditing ? (
-                                    <input
-                                        type="text"
-                                        value={scheduleFrom}
-                                        onChange={(e) => setScheduleFrom(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                                        placeholder="21-11-2025 10:00"
-                                    />
-                                ) : (
-                                    <div className="text-white">{bonus.schedule_from || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div className="col-span-2">
-                                <label className="block text-slate-400 mb-1">To</label>
-                                {isEditing ? (
-                                    <input
-                                        type="text"
-                                        value={scheduleTo}
-                                        onChange={(e) => setScheduleTo(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                                        placeholder="28-11-2025 22:59"
-                                    />
-                                ) : (
-                                    <div className="text-white">{bonus.schedule_to || 'N/A'}</div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Trigger */}
-                    <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                        <h3 className="text-lg font-bold text-white mb-4">🎯 Trigger</h3>
-                        <div className="space-y-4 text-sm">
-                            {/* Show translations if available */}
-                            {translations.length > 0 ? (
-                                <div>
-                                    <label className="block text-slate-400 mb-2">Translations</label>
-                                    <div className="space-y-3">
-                                        {translations.map((trans, idx) => (
-                                            <div key={idx} className="bg-slate-900/60 border border-slate-600 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-xs font-mono px-2 py-0.5 bg-cyan-600/20 text-cyan-400 rounded">
-                                                        {trans.language.toUpperCase()}
-                                                    </span>
-                                                </div>
-                                                <div className="text-white font-medium mb-1">{trans.name}</div>
-                                                {trans.description && (
-                                                    <div className="text-slate-300 text-xs">{trans.description}</div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-slate-500 italic">
-                                    No translations stored yet. Translations are added after JSON generation.
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-600">
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-3 gap-6">
+                    {/* Left: Bonus Form (2/3 width) */}
+                    <div className="col-span-2 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                        {/* Schedule */}
+                        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4">📅 Schedule</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <label className="block text-slate-400 mb-1">Type</label>
-                                    <div className="text-white">{bonus.trigger_type || 'N/A'}</div>
+                                    <div className="text-white">{bonus.schedule_type || 'N/A'}</div>
                                 </div>
                                 <div>
-                                    <label className="block text-slate-400 mb-1">Iterations</label>
-                                    <div className="text-white">{bonus.trigger_iterations || 'N/A'}</div>
+                                    <label className="block text-slate-400 mb-1">From</label>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={scheduleFrom}
+                                            onChange={(e) => setScheduleFrom(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                            placeholder="21-11-2025 10:00"
+                                        />
+                                    ) : (
+                                        <div className="text-white">{bonus.schedule_from || 'N/A'}</div>
+                                    )}
                                 </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Duration</label>
-                                    <div className="text-white">{bonus.trigger_duration || 'N/A'}</div>
+                                <div className="col-span-2">
+                                    <label className="block text-slate-400 mb-1">To</label>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={scheduleTo}
+                                            onChange={(e) => setScheduleTo(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                            placeholder="28-11-2025 22:59"
+                                        />
+                                    ) : (
+                                        <div className="text-white">{bonus.schedule_to || 'N/A'}</div>
+                                    )}
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-slate-400 mb-1">Minimum Amount</label>
-                                <div className="text-white">{formatCurrency(bonus.minimum_amount)}</div>
+                        </div>
+
+                        {/* Trigger */}
+                        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4">🎯 Trigger</h3>
+                            <div className="space-y-4 text-sm">
+                                {/* Show translations if available */}
+                                {translations.length > 0 ? (
+                                    <div>
+                                        <label className="block text-slate-400 mb-2">Translations</label>
+                                        <div className="space-y-3">
+                                            {translations.map((trans, idx) => (
+                                                <div key={idx} className="bg-slate-900/60 border border-slate-600 rounded-lg p-3">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-xs font-mono px-2 py-0.5 bg-cyan-600/20 text-cyan-400 rounded">
+                                                            {trans.language.toUpperCase()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-white font-medium mb-1">{trans.name}</div>
+                                                    {trans.description && (
+                                                        <div className="text-slate-300 text-xs">{trans.description}</div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-slate-500 italic">
+                                        No translations stored yet. Translations are added after JSON generation.
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-600">
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Type</label>
+                                        <div className="text-white">{bonus.trigger_type || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Iterations</label>
+                                        <div className="text-white">{bonus.trigger_iterations || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Duration</label>
+                                        <div className="text-white">{bonus.trigger_duration || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-slate-400 mb-1">Minimum Amount</label>
+                                    <div className="text-white">{formatCurrency(bonus.minimum_amount)}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Config */}
+                        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4">⚙️ Configuration</h3>
+                            <div className="space-y-4 text-sm">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Category</label>
+                                        <div className="text-white">{bonus.category || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Bonus Type</label>
+                                        <div className="text-white">{bonus.bonus_type || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Provider</label>
+                                        <div className="text-white">{bonus.provider || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Brand</label>
+                                        <div className="text-white">{bonus.brand || 'N/A'}</div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Percentage</label>
+                                        {isEditing ? (
+                                            <input
+                                                type="number"
+                                                value={percentage}
+                                                onChange={(e) => setPercentage(Number(e.target.value))}
+                                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                            />
+                                        ) : (
+                                            <div className="text-white">{bonus.percentage || 'N/A'}%</div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Wagering Multiplier</label>
+                                        {isEditing ? (
+                                            <input
+                                                type="number"
+                                                value={wageringMultiplier}
+                                                onChange={(e) => setWageringMultiplier(Number(e.target.value))}
+                                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                            />
+                                        ) : (
+                                            <div className="text-white">x{bonus.wagering_multiplier || 'N/A'}</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Cost (per FS)</label>
+                                        <div className="text-white">{formatCurrency(bonus.cost)}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Max Bets</label>
+                                        <div className="text-white">{formatCurrency(bonus.maximum_bets)}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Max Amount</label>
+                                        <div className="text-white">{formatCurrency(bonus.maximum_amount)}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Max Withdraw</label>
+                                        <div className="text-white">{formatCurrency(bonus.maximum_withdraw)}</div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Min Stake to Wager</label>
+                                        <div className="text-white">{formatCurrency(bonus.minimum_stake_to_wager)}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Max Stake to Wager</label>
+                                        <div className="text-white">{formatCurrency(bonus.maximum_stake_to_wager)}</div>
+                                    </div>
+                                </div>
+
+                                {bonus.game && (
+                                    <div>
+                                        <label className="block text-slate-400 mb-1">Game</label>
+                                        <div className="text-white">{bonus.game}</div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-slate-400 mb-1">Expiry</label>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={expiry}
+                                            onChange={(e) => setExpiry(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                            placeholder="7d"
+                                        />
+                                    ) : (
+                                        <div className="text-white">{bonus.expiry || 'N/A'}</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Timestamps */}
+                        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4">🕒 Metadata</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <label className="block text-slate-400 mb-1">Created</label>
+                                    <div className="text-white">{bonus.created_at ? new Date(bonus.created_at).toLocaleString() : 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <label className="block text-slate-400 mb-1">Updated</label>
+                                    <div className="text-white">{bonus.updated_at ? new Date(bonus.updated_at).toLocaleString() : 'N/A'}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Config */}
-                    <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                        <h3 className="text-lg font-bold text-white mb-4">⚙️ Configuration</h3>
-                        <div className="space-y-4 text-sm">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Category</label>
-                                    <div className="text-white">{bonus.category || 'N/A'}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Bonus Type</label>
-                                    <div className="text-white">{bonus.bonus_type || 'N/A'}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Provider</label>
-                                    <div className="text-white">{bonus.provider || 'N/A'}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Brand</label>
-                                    <div className="text-white">{bonus.brand || 'N/A'}</div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Percentage</label>
-                                    {isEditing ? (
-                                        <input
-                                            type="number"
-                                            value={percentage}
-                                            onChange={(e) => setPercentage(Number(e.target.value))}
-                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                                        />
-                                    ) : (
-                                        <div className="text-white">{bonus.percentage || 'N/A'}%</div>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Wagering Multiplier</label>
-                                    {isEditing ? (
-                                        <input
-                                            type="number"
-                                            value={wageringMultiplier}
-                                            onChange={(e) => setWageringMultiplier(Number(e.target.value))}
-                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                                        />
-                                    ) : (
-                                        <div className="text-white">x{bonus.wagering_multiplier || 'N/A'}</div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Cost</label>
-                                    <div className="text-white">{formatCurrency(bonus.cost)}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Multiplier</label>
-                                    <div className="text-white">{formatCurrency(bonus.multiplier)}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Max Amount</label>
-                                    <div className="text-white">{formatCurrency(bonus.maximum_amount)}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Max Withdraw</label>
-                                    <div className="text-white">{formatCurrency(bonus.maximum_withdraw)}</div>
-                                </div>
-                            </div>
-
-                            {bonus.game && (
-                                <div>
-                                    <label className="block text-slate-400 mb-1">Game</label>
-                                    <div className="text-white">{bonus.game}</div>
+                    {/* Right: Notes (1/3 width) */}
+                    <div className="col-span-1">
+                        <div className="bg-slate-800 border border-slate-600 rounded-xl p-6 sticky top-0 h-fit">
+                            <h3 className="text-lg font-bold text-white mb-4">📝 Notes</h3>
+                            {isEditing ? (
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-900/40 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-slate-500"
+                                    rows={20}
+                                    placeholder="Add notes about this bonus..."
+                                />
+                            ) : (
+                                <div className="text-slate-200 text-sm whitespace-pre-wrap min-h-[400px] bg-slate-900/40 rounded-lg p-3 border border-slate-700">
+                                    {bonus.notes || <span className="text-slate-500 italic">No notes</span>}
                                 </div>
                             )}
-
-                            <div>
-                                <label className="block text-slate-400 mb-1">Expiry</label>
-                                {isEditing ? (
-                                    <input
-                                        type="text"
-                                        value={expiry}
-                                        onChange={(e) => setExpiry(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                                        placeholder="7d"
-                                    />
-                                ) : (
-                                    <div className="text-white">{bonus.expiry || 'N/A'}</div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Timestamps */}
-                    <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                        <h3 className="text-lg font-bold text-white mb-4">🕒 Metadata</h3>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <label className="block text-slate-400 mb-1">Created</label>
-                                <div className="text-white">{bonus.created_at ? new Date(bonus.created_at).toLocaleString() : 'N/A'}</div>
-                            </div>
-                            <div>
-                                <label className="block text-slate-400 mb-1">Updated</label>
-                                <div className="text-white">{bonus.updated_at ? new Date(bonus.updated_at).toLocaleString() : 'N/A'}</div>
-                            </div>
                         </div>
                     </div>
                 </div>

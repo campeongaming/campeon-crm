@@ -40,6 +40,7 @@ export default function OptimizationTeam() {
     const [selectedBonusId, setSelectedBonusId] = useState('');
     const [bonusSearchQuery, setBonusSearchQuery] = useState('');
     const [bonusData, setBonusData] = useState<BonusTemplate | null>(null);
+    const [bonusNotes, setBonusNotes] = useState<string>('');
     const [bonuses, setBonuses] = useState<BonusTemplate[]>([]);
     const [jsonOutput, setJsonOutput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -99,11 +100,13 @@ export default function OptimizationTeam() {
             );
             setBonusData(response.data);
             setSelectedBonusId(response.data.id);
+            setBonusNotes(response.data.notes || '');
             setMessage(`✅ Found bonus: ${searchId}`);
         } catch (error) {
             setMessage(`❌ Bonus not found: ${searchId}`);
             setBonusData(null);
             setSelectedBonusId('');
+            setBonusNotes('');
             setJsonOutput('');
         } finally {
             setLoading(false);
@@ -115,6 +118,17 @@ export default function OptimizationTeam() {
         setBonusData(bonus);
         setJsonOutput('');
         setMessage('');
+
+        // Fetch full bonus details including notes
+        try {
+            const response = await axios.get(
+                `http://localhost:8000/api/bonus-templates/${bonus.id}`
+            );
+            setBonusNotes(response.data.notes || '');
+        } catch (error) {
+            console.error('Error fetching bonus notes:', error);
+            setBonusNotes('');
+        }
     };
 
     const generateFromBonusDetails = async () => {
@@ -342,69 +356,87 @@ export default function OptimizationTeam() {
             {/* JSON Output Section */}
             {jsonOutput && (
                 <div className="space-y-3">
-                    <div className="bg-slate-700 border border-purple-600 rounded p-4">
-                        <h3 className="font-semibold text-purple-300 mb-3">Generated JSON Output (Editable)</h3>
-                        <div className="border border-slate-600 rounded bg-slate-900 flex overflow-hidden" style={{ height: 'calc(100vh - 400px)', maxHeight: '90vh' }}>
-                            {/* Line Numbers Column */}
-                            <div
-                                style={{
-                                    backgroundColor: '#020617',
-                                    lineHeight: '1.6',
-                                    width: '50px',
-                                    paddingTop: '16px',
-                                    paddingRight: '12px',
-                                    paddingBottom: '16px',
-                                    paddingLeft: '8px',
-                                    transform: `translateY(-${scrollTop}px)`,
-                                    transition: 'none',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    minHeight: '100%',
-                                    borderRight: '1px solid #334155',
-                                    userSelect: 'none'
-                                }}
-                            >
-                                {Array.from({ length: jsonOutput.split('\n').length }, (_, i) => (
-                                    <span
-                                        key={i}
+                    {/* Two Column Layout: JSON Editor + Notes */}
+                    <div className={`grid gap-4 ${bonusNotes ? 'grid-cols-3' : 'grid-cols-1'}`}>
+                        {/* JSON Editor (2/3 width if notes exist) */}
+                        <div className={bonusNotes ? 'col-span-2' : 'col-span-1'}>
+                            <div className="bg-slate-700 border border-purple-600 rounded p-4">
+                                <h3 className="font-semibold text-purple-300 mb-3">Generated JSON Output (Editable)</h3>
+                                <div className="border border-slate-600 rounded bg-slate-900 flex overflow-hidden" style={{ height: 'calc(100vh - 400px)', maxHeight: '90vh' }}>
+                                    {/* Line Numbers Column */}
+                                    <div
                                         style={{
-                                            height: '25.6px',
-                                            flexShrink: 0,
-                                            textAlign: 'right',
-                                            fontFamily: 'monospace',
-                                            fontSize: '1rem',
-                                            color: '#9ca3af',
+                                            backgroundColor: '#020617',
+                                            lineHeight: '1.6',
+                                            width: '50px',
+                                            paddingTop: '16px',
+                                            paddingRight: '12px',
+                                            paddingBottom: '16px',
+                                            paddingLeft: '8px',
+                                            transform: `translateY(-${scrollTop}px)`,
+                                            transition: 'none',
                                             display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'flex-end',
-                                            backgroundColor: 'transparent',
-                                            background: 'transparent'
-                                        } as React.CSSProperties}
+                                            flexDirection: 'column',
+                                            minHeight: '100%',
+                                            borderRight: '1px solid #334155',
+                                            userSelect: 'none'
+                                        }}
                                     >
-                                        {i + 1}
-                                    </span>
-                                ))}
+                                        {Array.from({ length: jsonOutput.split('\n').length }, (_, i) => (
+                                            <span
+                                                key={i}
+                                                style={{
+                                                    height: '25.6px',
+                                                    flexShrink: 0,
+                                                    textAlign: 'right',
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '1rem',
+                                                    color: '#9ca3af',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'flex-end',
+                                                    backgroundColor: 'transparent',
+                                                    background: 'transparent'
+                                                } as React.CSSProperties}
+                                            >
+                                                {i + 1}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    {/* JSON Textarea */}
+                                    <textarea
+                                        value={jsonOutput}
+                                        onChange={(e) => {
+                                            setJsonOutput(e.target.value);
+                                            const errors = validateJSON(e.target.value);
+                                            setValidationErrors(errors);
+                                        }}
+                                        onScroll={(e) => setScrollTop((e.target as HTMLTextAreaElement).scrollTop)}
+                                        className="flex-1 bg-slate-900 p-4 text-base text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-600/80 resize-none"
+                                        style={{
+                                            lineHeight: '1.6',
+                                            tabSize: 2,
+                                            WebkitTextFillColor: '#e2e8f0',
+                                            border: 'none',
+                                            overflowY: 'scroll',
+                                            overflowX: 'auto'
+                                        }}
+                                    />
+                                </div>
                             </div>
-                            {/* JSON Textarea */}
-                            <textarea
-                                value={jsonOutput}
-                                onChange={(e) => {
-                                    setJsonOutput(e.target.value);
-                                    const errors = validateJSON(e.target.value);
-                                    setValidationErrors(errors);
-                                }}
-                                onScroll={(e) => setScrollTop((e.target as HTMLTextAreaElement).scrollTop)}
-                                className="flex-1 bg-slate-900 p-4 text-base text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-600/80 resize-none"
-                                style={{
-                                    lineHeight: '1.6',
-                                    tabSize: 2,
-                                    WebkitTextFillColor: '#e2e8f0',
-                                    border: 'none',
-                                    overflowY: 'scroll',
-                                    overflowX: 'auto'
-                                }}
-                            />
                         </div>
+
+                        {/* Notes Box (1/3 width) */}
+                        {bonusNotes && (
+                            <div className="col-span-1">
+                                <div className="bg-slate-800 border border-slate-600 rounded p-4 sticky top-4" style={{ height: 'calc(100vh - 400px)', maxHeight: '90vh' }}>
+                                    <h3 className="font-semibold text-white mb-3">📝 Notes</h3>
+                                    <div className="text-slate-200 text-sm whitespace-pre-wrap bg-slate-900/40 rounded-lg p-3 border border-slate-700" style={{ minHeight: '400px' }}>
+                                        {bonusNotes}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Validation Errors */}
