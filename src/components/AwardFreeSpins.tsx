@@ -73,7 +73,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
         const fetchAdminConfig = async () => {
             try {
                 setLoadingAdmin(true);
-                const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}`);
+                const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}?cost_only=true`);
                 setAdminConfig(response.data);
             } catch (err) {
                 console.error('Failed to fetch admin config:', err);
@@ -90,7 +90,7 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
     const fetchPricingTableByCost = async (costValue: number) => {
         try {
             setLoadingAdmin(true);
-            const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}`);
+            const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}?cost_only=true`);
             const config = response.data as AdminConfig;
 
             // Search for cost table matching this EUR value
@@ -107,30 +107,14 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
                 }
 
                 if (matchedTable && matchedTable.values) {
-                    // ✅ SAVE the matched table for later use
+                    // ✅ SAVE the matched table for later use (only for cost lookup)
                     setMatchedCostTable(matchedTable.values);
                     console.log('✅ Matched cost table with EUR ≈', costValue, ':', matchedTable.values);
-
-                    // Set minimum amount based on EUR value from table
-                    setMinimumAmountEUR(matchedTable.values.EUR * 250);
-
-                    // Set maximum withdraw from admin config if available
-                    if (config.maximum_withdraw && Array.isArray(config.maximum_withdraw)) {
-                        const withdrawTable = config.maximum_withdraw[0];
-                        if (withdrawTable && withdrawTable.values) {
-                            const eurWithdraw = withdrawTable.values.EUR || Object.values(withdrawTable.values)[0];
-                            if (eurWithdraw) {
-                                setMaximumWithdrawEUR(eurWithdraw);
-                            }
-                        }
-                    }
                 } else {
                     console.warn('⚠️ No cost table found with EUR ≈', costValue);
                     setMatchedCostTable(null);
                 }
             }
-
-            setAdminConfig(config);
         } catch (err) {
             console.error('Failed to fetch pricing table by cost:', err);
             setMatchedCostTable(null);
@@ -162,31 +146,12 @@ export default function AwardFreeSpins({ onBonusSaved }: { onBonusSaved?: () => 
             console.warn('⚠️ No exact cost table found for EUR =', eurValue, '- using defaults');
         }
 
-        // Otherwise build from admin config or use default
-        // "*" is ALWAYS EUR value
+        // For non-cost fields (minimum_amount, maximum_withdraw), just use the user's input value
+        // These are NOT tied to provider/admin config
         const map: Record<string, number> = { '*': eurValue };
-
-        if (!adminConfig || !adminConfig[fieldName]) {
-            CURRENCIES.forEach(curr => {
-                map[curr] = eurValue;
-            });
-            return map;
-        }
-
-        const tables = adminConfig[fieldName];
-        if (Array.isArray(tables) && tables.length > 0) {
-            const table = tables[0];
-            // Get EUR value from table for "*"
-            map['*'] = table.values.EUR || eurValue;
-            CURRENCIES.forEach(curr => {
-                map[curr] = table.values[curr] || eurValue;
-            });
-        } else {
-            CURRENCIES.forEach(curr => {
-                map[curr] = eurValue;
-            });
-        }
-
+        CURRENCIES.forEach(curr => {
+            map[curr] = eurValue;
+        });
         return map;
     };
 

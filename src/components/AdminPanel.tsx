@@ -172,12 +172,43 @@ export default function AdminPanel() {
     const handleSave = async () => {
         setLoading(true);
         try {
-            const payload = {
-                ...config,
+            const payload: any = {
+                provider: config.provider,
                 casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions,
                 live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
             };
-            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config`, payload);
+
+            // Only include the tab-specific fields being saved
+            if (activeTab === 'cost') {
+                payload.cost = config.cost;
+            } else if (activeTab === 'amounts') {
+                payload.minimum_amount = config.minimum_amount;
+                payload.maximum_amount = config.maximum_amount;
+            } else if (activeTab === 'stakes') {
+                payload.minimum_stake_to_wager = config.minimum_stake_to_wager;
+                payload.maximum_stake_to_wager = config.maximum_stake_to_wager;
+            } else if (activeTab === 'withdrawals') {
+                payload.maximum_withdraw = config.maximum_withdraw;
+            } else if (activeTab === 'wager') {
+                payload.minimum_stake_to_wager = config.minimum_stake_to_wager;
+                payload.maximum_stake_to_wager = config.maximum_stake_to_wager;
+            } else if (activeTab === 'proportions') {
+                // Proportions tab only sends proportions, no tables
+            }
+
+            // Add default empty arrays for fields not in this tab
+            if (activeTab !== 'cost') payload.cost = [];
+            if (activeTab !== 'amounts') {
+                payload.minimum_amount = [];
+                payload.maximum_amount = [];
+            }
+            if (activeTab !== 'stakes' && activeTab !== 'wager') {
+                payload.minimum_stake_to_wager = [];
+                payload.maximum_stake_to_wager = [];
+            }
+            if (activeTab !== 'withdrawals') payload.maximum_withdraw = [];
+
+            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config?tab=${activeTab}`, payload);
 
             // Show tab-specific message
             let successMessage = '';
@@ -419,8 +450,8 @@ export default function AdminPanel() {
                             { id: 'cost', label: 'Cost', icon: '💰' },
                             { id: 'amounts', label: 'Amounts', icon: '💵' },
                             { id: 'stakes', label: 'Stakes', icon: '🎯' },
-                            { id: 'withdrawals', label: 'Withdrawals', icon: '🏦' },
-                            { id: 'wager', label: 'Wager', icon: '🎰' },
+                            { id: 'withdrawals', label: 'Withdrawals (cap)', icon: '🏦' },
+                            { id: 'wager', label: 'Max/Min to Wager', icon: '🎰' },
                             { id: 'proportions', label: 'Proportions', icon: '📊' },
                         ].map(({ id, label, icon }) => (
                             <button

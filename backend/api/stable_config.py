@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import json
 
 from database.database import get_db
@@ -10,11 +10,17 @@ from api.schemas import StableConfigCreate, StableConfigResponse
 router = APIRouter()
 
 
-@router.post("/stable-config", response_model=StableConfigResponse)
-def save_stable_config(config: StableConfigCreate, db: Session = Depends(get_db)):
+@router.post("/stable-config")
+def save_stable_config(config: StableConfigCreate, tab: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """
-    Save or update stable configuration for a provider.
-    Creates new record if provider doesn't exist, otherwise updates existing.
+    Save or update stable configuration.
+
+    IMPORTANT: Provider is ONLY relevant for cost tab.
+    - Cost tab → saves to provider-specific row (PRAGMATIC, BETSOFT)
+    - Other tabs → save to DEFAULT row (provider-independent)
+
+    Parameters:
+    - tab: Optional tab identifier ('cost', 'amounts', 'stakes', 'withdrawals', 'wager', 'proportions')
     """
     try:
         # Convert Pydantic models to dicts for JSON serialization
@@ -43,52 +49,119 @@ def save_stable_config(config: StableConfigCreate, db: Session = Depends(get_db)
         else:
             config_data['live_casino_proportions'] = ""
 
+        # Determine which provider to use based on tab
+        # Cost tab → use actual provider (PRAGMATIC/BETSOFT)
+        # Other tabs → use "DEFAULT" (provider-independent)
+        target_provider = config.provider if tab == 'cost' else "DEFAULT"
+
         # Check if config exists for this provider
         existing_config = db.query(StableConfig).filter(
-            StableConfig.provider == config.provider
+            StableConfig.provider == target_provider
         ).first()
 
         if existing_config:
-            # Update existing
-            existing_config.cost = config_data['cost']
-            existing_config.maximum_amount = config_data['maximum_amount']
-            existing_config.minimum_amount = config_data['minimum_amount']
-            existing_config.minimum_stake_to_wager = config_data['minimum_stake_to_wager']
-            existing_config.maximum_stake_to_wager = config_data['maximum_stake_to_wager']
-            existing_config.maximum_withdraw = config_data['maximum_withdraw']
-            existing_config.casino_proportions = config_data['casino_proportions']
-            existing_config.live_casino_proportions = config_data['live_casino_proportions']
+            # Update existing - only update fields based on tab
+            if tab == 'cost':
+                # Cost tab → only update cost field
+                if config_data['cost']:
+                    existing_config.cost = config_data['cost']
+            else:
+                # Other tabs → update corresponding fields (stored in DEFAULT row)
+                if config_data['maximum_amount']:
+                    existing_config.maximum_amount = config_data['maximum_amount']
+                if config_data['minimum_amount']:
+                    existing_config.minimum_amount = config_data['minimum_amount']
+                if config_data['minimum_stake_to_wager']:
+                    existing_config.minimum_stake_to_wager = config_data['minimum_stake_to_wager']
+                if config_data['maximum_stake_to_wager']:
+                    existing_config.maximum_stake_to_wager = config_data['maximum_stake_to_wager']
+                if config_data['maximum_withdraw']:
+                    existing_config.maximum_withdraw = config_data['maximum_withdraw']
+                if config_data['casino_proportions']:
+                    existing_config.casino_proportions = config_data['casino_proportions']
+                if config_data['live_casino_proportions']:
+                    existing_config.live_casino_proportions = config_data['live_casino_proportions']
+
             db.commit()
             db.refresh(existing_config)
-            return existing_config
+
+            # Return filtered response based on tab
+            return _format_response(existing_config, tab)
         else:
             # Create new
-            new_config = StableConfig(
-                provider=config.provider,
-                cost=config_data['cost'],
-                maximum_amount=config_data['maximum_amount'],
-                minimum_amount=config_data['minimum_amount'],
-                minimum_stake_to_wager=config_data['minimum_stake_to_wager'],
-                maximum_stake_to_wager=config_data['maximum_stake_to_wager'],
-                maximum_withdraw=config_data['maximum_withdraw'],
-                casino_proportions=config_data['casino_proportions'],
-                live_casino_proportions=config_data['live_casino_proportions']
-            )
+            if tab == 'cost':
+                # Cost tab → create provider-specific row with only cost
+                new_config = StableConfig(
+                    provider=target_provider,
+                    cost=config_data['cost'],
+                    maximum_amount=[],
+                    minimum_amount=[],
+                    minimum_stake_to_wager=[],
+                    maximum_stake_to_wager=[],
+                    maximum_withdraw=[],
+                    casino_proportions="",
+                    live_casino_proportions=""
+                )
+            else:
+                # Other tabs → create DEFAULT row with non-cost fields
+                new_config = StableConfig(
+                    provider="DEFAULT",
+                    cost=[],
+                    maximum_amount=config_data['maximum_amount'],
+                    minimum_amount=config_data['minimum_amount'],
+                    minimum_stake_to_wager=config_data['minimum_stake_to_wager'],
+                    maximum_stake_to_wager=config_data['maximum_stake_to_wager'],
+                    maximum_withdraw=config_data['maximum_withdraw'],
+                    casino_proportions=config_data['casino_proportions'],
+                    live_casino_proportions=config_data['live_casino_proportions']
+                )
+
             db.add(new_config)
             db.commit()
             db.refresh(new_config)
-            return new_config
+
+            # Return filtered response based on tab
+            return _format_response(new_config, tab)
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=500, detail=f"Error saving config: {str(e)}")
 
 
-@router.get("/stable-config/{provider}", response_model=StableConfigResponse)
-def get_stable_config(provider: str, db: Session = Depends(get_db)):
+def _format_response(config: StableConfig, tab: Optional[str] = None):
+    """
+    Format response - include provider field only for cost tab
+    """
+    response = {
+        "id": config.id,
+        "created_at": config.created_at,
+        "updated_at": config.updated_at,
+        "cost": config.cost or [],
+        "maximum_amount": config.maximum_amount or [],
+        "minimum_amount": config.minimum_amount or [],
+        "minimum_stake_to_wager": config.minimum_stake_to_wager or [],
+        "maximum_stake_to_wager": config.maximum_stake_to_wager or [],
+        "maximum_withdraw": config.maximum_withdraw or [],
+        "casino_proportions": config.casino_proportions,
+        "live_casino_proportions": config.live_casino_proportions,
+    }
+
+    # Only include provider for cost tab or if tab is not specified
+    if tab is None or tab == 'cost':
+        response["provider"] = config.provider
+
+    return response
+
+
+@router.get("/stable-config/{provider}")
+def get_stable_config(provider: str, cost_only: bool = Query(False), db: Session = Depends(get_db)):
     """
     Retrieve stable configuration for a specific provider.
-    Returns proportions as JSON strings (for admin panel display).
+
+    Parameters:
+    - provider: Provider name (PRAGMATIC, BETSOFT)
+    - cost_only: If True, only return cost tables (for bonus creation form).
+                If False, return all tables (for admin panel).
     """
     config = db.query(StableConfig).filter(
         StableConfig.provider == provider.upper()
@@ -97,6 +170,12 @@ def get_stable_config(provider: str, db: Session = Depends(get_db)):
     if not config:
         raise HTTPException(
             status_code=404, detail=f"Config not found for provider: {provider}")
+
+    # If cost_only is True, return ONLY cost tables - provider is only for cost lookup
+    if cost_only:
+        return {
+            "cost": config.cost or [],
+        }
 
     return config
 
