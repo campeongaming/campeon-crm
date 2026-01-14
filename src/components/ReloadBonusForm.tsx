@@ -77,41 +77,60 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
             try {
                 setLoadingAdmin(true);
 
-                // Use PRAGMATIC as default to fetch common tables (doesn't matter which provider)
-                const response = await axios.get(`http://localhost:8000/api/stable-config/PRAGMATIC/with-tables`);
+                // Fetch from DEFAULT (provider-independent tables for amounts, stakes, withdrawals, proportions)
+                console.log('🔍 Fetching from DEFAULT provider...');
+                const response = await axios.get(`http://localhost:8000/api/stable-config/DEFAULT/with-tables`);
+                console.log('📦 Response data:', response.data);
                 const config = response.data as AdminConfig;
 
-                console.log('📦 Fetched COMMON tables (Amounts, Stakes, Withdrawals, Wager, Proportions)');
+                console.log('📦 Fetched COMMON tables from DEFAULT');
+                console.log('  - minimum_stake_to_wager:', config.minimum_stake_to_wager);
+                console.log('  - maximum_stake_to_wager:', config.maximum_stake_to_wager);
+                console.log('  - maximum_amount:', config.maximum_amount);
+                console.log('  - maximum_withdraw:', config.maximum_withdraw);
 
                 // Extract first table from each array and set the selected tables
                 if (config.minimum_stake_to_wager && Array.isArray(config.minimum_stake_to_wager) && config.minimum_stake_to_wager[0]) {
                     setSelectedMinStakeTable(config.minimum_stake_to_wager[0].values);
                     console.log('✅ Set Min Stake:', config.minimum_stake_to_wager[0].values);
+                } else {
+                    console.log('⚠️ No minimum_stake_to_wager data found');
                 }
                 if (config.maximum_stake_to_wager && Array.isArray(config.maximum_stake_to_wager) && config.maximum_stake_to_wager[0]) {
                     setSelectedMaxStakeTable(config.maximum_stake_to_wager[0].values);
                     console.log('✅ Set Max Stake:', config.maximum_stake_to_wager[0].values);
+                } else {
+                    console.log('⚠️ No maximum_stake_to_wager data found');
                 }
                 if (config.maximum_amount && Array.isArray(config.maximum_amount) && config.maximum_amount[0]) {
                     setSelectedMaxAmountTable(config.maximum_amount[0].values);
                     console.log('✅ Set Max Amount:', config.maximum_amount[0].values);
+                } else {
+                    console.log('⚠️ No maximum_amount data found');
                 }
                 if (config.maximum_withdraw && Array.isArray(config.maximum_withdraw) && config.maximum_withdraw[0]) {
                     setSelectedMaxWithdrawTable(config.maximum_withdraw[0].values);
                     console.log('✅ Set Max Withdraw:', config.maximum_withdraw[0].values);
+                } else {
+                    console.log('⚠️ No maximum_withdraw data found');
                 }
                 if (config.casino_proportions && Array.isArray(config.casino_proportions) && config.casino_proportions[0]) {
                     setSelectedCasinoProportionsTable(config.casino_proportions[0].values);
                     console.log('✅ Set Casino Proportions:', config.casino_proportions[0].values);
+                } else {
+                    console.log('⚠️ No casino_proportions data found');
                 }
                 if (config.live_casino_proportions && Array.isArray(config.live_casino_proportions) && config.live_casino_proportions[0]) {
                     setSelectedLiveCasinoProportionsTable(config.live_casino_proportions[0].values);
                     console.log('✅ Set Live Casino Proportions:', config.live_casino_proportions[0].values);
+                } else {
+                    console.log('⚠️ No live_casino_proportions data found');
                 }
 
                 setAdminConfig(config);
-            } catch (err) {
-                console.error('Failed to fetch common tables:', err);
+            } catch (err: any) {
+                console.error('❌ Failed to fetch common tables:', err);
+                console.error('Error details:', err.response?.data);
                 setAdminConfig(null);
             } finally {
                 setLoadingAdmin(false);
@@ -533,7 +552,7 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                                     <option value="">Select table...</option>
                                     {adminConfig?.minimum_stake_to_wager?.map(table => (
                                         <option key={table.id} value={JSON.stringify(table.values)}>
-                                            {table.name}
+                                            €{table.values.EUR?.toFixed(2) || '0.00'}
                                         </option>
                                     ))}
                                 </select>
@@ -554,7 +573,7 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                                     <option value="">Select table...</option>
                                     {adminConfig?.maximum_stake_to_wager?.map(table => (
                                         <option key={table.id} value={JSON.stringify(table.values)}>
-                                            {table.name}
+                                            €{table.values.EUR?.toFixed(2) || '0.00'}
                                         </option>
                                     ))}
                                 </select>
@@ -575,7 +594,7 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                                     <option value="">Select table...</option>
                                     {adminConfig?.maximum_amount?.map(table => (
                                         <option key={table.id} value={JSON.stringify(table.values)}>
-                                            {table.name}
+                                            €{table.values.EUR?.toFixed(2) || '0.00'}
                                         </option>
                                     ))}
                                 </select>
@@ -596,7 +615,7 @@ export default function ReloadBonusForm({ onBonusSaved }: { onBonusSaved?: () =>
                                     <option value="">Select table...</option>
                                     {adminConfig?.maximum_withdraw?.map(table => (
                                         <option key={table.id} value={JSON.stringify(table.values)}>
-                                            {table.name}
+                                            €{table.values.EUR?.toFixed(2) || '0.00'}
                                         </option>
                                     ))}
                                 </select>

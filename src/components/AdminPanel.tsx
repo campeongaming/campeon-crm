@@ -43,22 +43,22 @@ export default function AdminPanel() {
 
     const [pragmaticConfig, setPragmaticConfig] = useState<StableConfigWithVariations>({
         provider: 'PRAGMATIC',
-        cost: [defaultTable],
-        maximum_amount: [defaultTable],
-        minimum_amount: [defaultTable],
-        minimum_stake_to_wager: [defaultTable],
-        maximum_stake_to_wager: [defaultTable],
-        maximum_withdraw: [defaultTable],
+        cost: [],
+        maximum_amount: [],
+        minimum_amount: [],
+        minimum_stake_to_wager: [],
+        maximum_stake_to_wager: [],
+        maximum_withdraw: [],
     });
 
     const [betsoftConfig, setBetsoftConfig] = useState<StableConfigWithVariations>({
         provider: 'BETSOFT',
-        cost: [defaultTable],
-        maximum_amount: [defaultTable],
-        minimum_amount: [defaultTable],
-        minimum_stake_to_wager: [defaultTable],
-        maximum_stake_to_wager: [defaultTable],
-        maximum_withdraw: [defaultTable],
+        cost: [],
+        maximum_amount: [],
+        minimum_amount: [],
+        minimum_stake_to_wager: [],
+        maximum_stake_to_wager: [],
+        maximum_withdraw: [],
     });
 
     const [message, setMessage] = useState('');
@@ -72,41 +72,54 @@ export default function AdminPanel() {
     const config = selectedProvider === 'PRAGMATIC' ? pragmaticConfig : betsoftConfig;
     const setConfig = selectedProvider === 'PRAGMATIC' ? setPragmaticConfig : setBetsoftConfig;
 
-    // Fetch saved config from backend when provider changes
+    // Fetch saved config from backend when provider or tab changes
     useEffect(() => {
         const fetchConfig = async () => {
             try {
+                // Cost tab → fetch from provider-specific row (PRAGMATIC/BETSOFT)
+                // Other tabs → fetch from DEFAULT row (provider-independent)
+                const providerToFetch = activeTab === 'cost' ? selectedProvider : 'DEFAULT';
+
                 const response = await axios.get(
-                    `${API_ENDPOINTS.BASE_URL}/api/stable-config/${selectedProvider}`
+                    `${API_ENDPOINTS.BASE_URL}/api/stable-config/${providerToFetch}`
                 );
                 if (response.data) {
                     const newConfig: StableConfigWithVariations = {
                         provider: response.data.provider,
-                        cost: response.data.cost || [defaultTable],
-                        maximum_amount: response.data.maximum_amount || [defaultTable],
-                        minimum_amount: response.data.minimum_amount || [defaultTable],
-                        minimum_stake_to_wager: response.data.minimum_stake_to_wager || [defaultTable],
-                        maximum_stake_to_wager: response.data.maximum_stake_to_wager || [defaultTable],
-                        maximum_withdraw: response.data.maximum_withdraw || [defaultTable],
+                        cost: response.data.cost && response.data.cost.length > 0 ? response.data.cost : [],
+                        maximum_amount: response.data.maximum_amount && response.data.maximum_amount.length > 0 ? response.data.maximum_amount : [],
+                        minimum_amount: response.data.minimum_amount && response.data.minimum_amount.length > 0 ? response.data.minimum_amount : [],
+                        minimum_stake_to_wager: response.data.minimum_stake_to_wager && response.data.minimum_stake_to_wager.length > 0 ? response.data.minimum_stake_to_wager : [],
+                        maximum_stake_to_wager: response.data.maximum_stake_to_wager && response.data.maximum_stake_to_wager.length > 0 ? response.data.maximum_stake_to_wager : [],
+                        maximum_withdraw: response.data.maximum_withdraw && response.data.maximum_withdraw.length > 0 ? response.data.maximum_withdraw : [],
                     };
-                    if (selectedProvider === 'PRAGMATIC') {
-                        setPragmaticConfig(newConfig);
+
+                    // For cost tab, update the provider-specific config
+                    // For other tabs, update the shared config (stored in both states)
+                    if (activeTab === 'cost') {
+                        if (selectedProvider === 'PRAGMATIC') {
+                            setPragmaticConfig(newConfig);
+                        } else {
+                            setBetsoftConfig(newConfig);
+                        }
+                    } else {
+                        // Other tabs share the same DEFAULT data
+                        setPragmaticConfig(prev => ({ ...prev, ...newConfig, provider: 'PRAGMATIC', cost: prev.cost }));
+                        setBetsoftConfig(prev => ({ ...prev, ...newConfig, provider: 'BETSOFT', cost: prev.cost }));
                         setPragmaticCasinoProportions(response.data.casino_proportions || '');
                         setPragmaticLiveCasinoProportions(response.data.live_casino_proportions || '');
-                    } else {
-                        setBetsoftConfig(newConfig);
                         setBetsoftCasinoProportions(response.data.casino_proportions || '');
                         setBetsoftLiveCasinoProportions(response.data.live_casino_proportions || '');
                     }
                 }
             } catch (error: any) {
                 // No saved config yet, keep defaults
-                console.log(`No saved config for ${selectedProvider}`, error.response?.status);
+                console.log(`No saved config for ${activeTab === 'cost' ? selectedProvider : 'DEFAULT'}`, error.response?.status);
             }
         };
 
         fetchConfig();
-    }, [selectedProvider]);
+    }, [selectedProvider, activeTab]);
 
     const handleCurrencyChange = (field: string, tableId: string, currency: string, value: number) => {
         setConfig(prev => ({

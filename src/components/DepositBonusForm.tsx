@@ -65,18 +65,24 @@ export default function DepositBonusForm() {
         const fetchAdminConfig = async () => {
             setLoadingCosts(true);
             try {
-                const response = await axios.get(
+                // Fetch cost from PRAGMATIC (provider-specific)
+                const costResponse = await axios.get(
                     `${API_ENDPOINTS.BASE_URL}/api/stable-config/PRAGMATIC`
                 );
 
                 // Set cost tables
-                if (response.data?.cost && Array.isArray(response.data.cost)) {
-                    setCostTables(response.data.cost);
+                if (costResponse.data?.cost && Array.isArray(costResponse.data.cost)) {
+                    setCostTables(costResponse.data.cost);
                 }
 
+                // Fetch other fields from DEFAULT (provider-independent)
+                const defaultResponse = await axios.get(
+                    `${API_ENDPOINTS.BASE_URL}/api/stable-config/DEFAULT`
+                );
+
                 // Set admin maximum_withdraw values - handle array of tables
-                if (response.data?.maximum_withdraw && Array.isArray(response.data.maximum_withdraw)) {
-                    const withdrawTable = response.data.maximum_withdraw[0];
+                if (defaultResponse.data?.maximum_withdraw && Array.isArray(defaultResponse.data.maximum_withdraw)) {
+                    const withdrawTable = defaultResponse.data.maximum_withdraw[0];
                     if (withdrawTable?.values) {
                         console.log('DEBUG: Got admin maximum_withdraw.values:', withdrawTable.values);
                         setAdminMaxWithdraw(withdrawTable.values);

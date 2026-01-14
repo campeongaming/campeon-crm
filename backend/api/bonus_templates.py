@@ -300,6 +300,28 @@ def get_bonus_template(template_id: str, db: Session = Depends(get_db)):
     return template
 
 
+@router.patch("/bonus-templates/{template_id}", response_model=BonusTemplateResponse)
+def patch_bonus_template(template_id: str, template_patch: dict, db: Session = Depends(get_db)):
+    """Partially update a bonus template"""
+    template = db.query(BonusTemplate).filter(
+        BonusTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Template '{template_id}' not found"
+        )
+
+    # Update only provided fields
+    for field, value in template_patch.items():
+        if hasattr(template, field):
+            setattr(template, field, value)
+
+    template.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(template)
+    return template
+
+
 @router.put("/bonus-templates/{template_id}", response_model=BonusTemplateResponse)
 def update_bonus_template(template_id: str, template_update: BonusTemplateCreate, db: Session = Depends(get_db)):
     """Update a bonus template"""

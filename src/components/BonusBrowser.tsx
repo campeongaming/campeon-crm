@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import React from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '@/lib/api-config';
+import ViewEditBonusModal from './ViewEditBonusModal';
 
 interface BonusItem {
     id: string;
@@ -26,15 +27,10 @@ export default function BonusBrowser() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    // Translation Team state
-    const [translationAction, setTranslationAction] = useState('view');
-    const [translationLang, setTranslationLang] = useState('en');
-    const [translationJson, setTranslationJson] = useState('');
-
-    // CRM Ops Team state
-    const [opsAction, setOpsAction] = useState('view');
-    const [opsFormat, setOpsFormat] = useState('json');
-    const [opsJson, setOpsJson] = useState('');
+    // Modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalBonusId, setModalBonusId] = useState('');
+    const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
 
     const months = [
         { num: 1, name: 'January' },
@@ -126,11 +122,37 @@ export default function BonusBrowser() {
             }
         } catch (error: any) {
             const errorMsg = error.response?.data?.detail || error.message;
-            setMessage(`❌ No bonuses found: ${errorMsg}`);
+            setMessage(`❌ ${errorMsg}`);
             setBonuses([]);
             setSelectedBonusId(null);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleViewBonus = (bonusId: string) => {
+        setModalBonusId(bonusId);
+        setModalMode('view');
+        setModalOpen(true);
+    };
+
+    const handleEditBonus = (bonusId: string) => {
+        setModalBonusId(bonusId);
+        setModalMode('edit');
+        setModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setModalOpen(false);
+        setModalBonusId('');
+    };
+
+    const handleModalSave = () => {
+        // Refresh the bonus list after save
+        if (selectedDay) {
+            handleBrowse();
+        } else {
+            handleSearch();
         }
     };
 
@@ -152,85 +174,6 @@ export default function BonusBrowser() {
             setMessage(`❌ Error deleting bonus: ${errorMsg}`);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleTranslationAction = async () => {
-        if (!selectedBonusId) {
-            setMessage('❌ Please select a bonus first');
-            return;
-        }
-
-        if (translationAction === 'fetch') {
-            try {
-                // API call to fetch translation data
-                const json = {
-                    bonus_id: selectedBonusId,
-                    language: translationLang,
-                    action: 'fetch_for_translation',
-                    timestamp: new Date().toISOString()
-                };
-                setTranslationJson(JSON.stringify(json, null, 2));
-                setMessage(`✅ Fetched translation data for ${selectedBonusId}`);
-            } catch (error: any) {
-                setMessage(`❌ Error: ${error.message}`);
-            }
-        } else if (translationAction === 'submit') {
-            try {
-                const json = {
-                    bonus_id: selectedBonusId,
-                    language: translationLang,
-                    action: 'submit_translation',
-                    translated_content: 'TRANSLATION_DATA_HERE',
-                    timestamp: new Date().toISOString()
-                };
-                setTranslationJson(JSON.stringify(json, null, 2));
-                setMessage(`✅ Ready to submit translation for ${selectedBonusId}`);
-            } catch (error: any) {
-                setMessage(`❌ Error: ${error.message}`);
-            }
-        }
-    };
-
-    const handleOpsAction = async () => {
-        if (!selectedBonusId) {
-            setMessage('❌ Please select a bonus first');
-            return;
-        }
-
-        if (opsAction === 'fetch') {
-            try {
-                // API call to fetch bonus data for operations
-                const json = {
-                    bonus_id: selectedBonusId,
-                    action: 'fetch_for_operations',
-                    format: opsFormat,
-                    timestamp: new Date().toISOString()
-                };
-                setOpsJson(JSON.stringify(json, null, 2));
-                setMessage(`✅ Fetched bonus data for ${selectedBonusId}`);
-            } catch (error: any) {
-                setMessage(`❌ Error: ${error.message}`);
-            }
-        } else if (opsAction === 'create') {
-            try {
-                const json = {
-                    bonus_id: selectedBonusId,
-                    action: 'create_bonus_json',
-                    format: opsFormat,
-                    bonus_data: {
-                        name: 'BONUS_NAME',
-                        provider: 'PROVIDER',
-                        percentage: 0,
-                        category: 'CATEGORY'
-                    },
-                    timestamp: new Date().toISOString()
-                };
-                setOpsJson(JSON.stringify(json, null, 2));
-                setMessage(`✅ Created JSON template for ${selectedBonusId}`);
-            } catch (error: any) {
-                setMessage(`❌ Error: ${error.message}`);
-            }
         }
     };
 
@@ -375,10 +318,22 @@ export default function BonusBrowser() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewBonus(bonus.id);
+                                                }}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all"
+                                            >
                                                 👁️ View
                                             </button>
-                                            <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEditBonus(bonus.id);
+                                                }}
+                                                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all"
+                                            >
                                                 ✏️ Edit
                                             </button>
                                             <button
@@ -404,155 +359,19 @@ export default function BonusBrowser() {
                         <div className="text-4xl mb-2">📭</div>
                         <div>No bonuses selected yet</div>
                     </div>
-                )}
-
-                {/* Team Actions - Only show if bonus is selected */}
-                {selectedBonusId && (
-                    <div className="mt-12 border-t border-slate-700 pt-8">
-                        <h2 className="text-2xl font-bold text-white mb-8">🤝 Team Actions</h2>
-                        <div className="text-sm text-slate-400 mb-6 p-4 bg-slate-800/40 rounded-lg border border-slate-700">
-                            📌 <span className="font-medium text-cyan-400">Selected Bonus ID:</span> <span className="font-mono">{selectedBonusId}</span>
-                        </div>
-
-                        {/* Translation Team Section */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                                <h3 className="text-xl font-bold text-white mb-6">🌐 Translation Team</h3>
-
-                                {/* Action Dropdown */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-slate-300 mb-2">Action</label>
-                                    <select
-                                        value={translationAction}
-                                        onChange={(e) => {
-                                            setTranslationAction(e.target.value);
-                                            setTranslationJson('');
-                                        }}
-                                        className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
-                                    >
-                                        <option value="view">👁️ View Bonus</option>
-                                        <option value="fetch">📥 Fetch for Translation</option>
-                                        <option value="submit">📤 Submit Translation</option>
-                                    </select>
-                                </div>
-
-                                {/* Language Dropdown (for Fetch/Submit) */}
-                                {(translationAction === 'fetch' || translationAction === 'submit') && (
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Language</label>
-                                        <select
-                                            value={translationLang}
-                                            onChange={(e) => setTranslationLang(e.target.value)}
-                                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
-                                        >
-                                            <option value="en">English</option>
-                                            <option value="es">Spanish</option>
-                                            <option value="fr">French</option>
-                                            <option value="de">German</option>
-                                            <option value="it">Italian</option>
-                                            <option value="pt">Portuguese</option>
-                                        </select>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={handleTranslationAction}
-                                    disabled={loading}
-                                    className="w-full px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-all disabled:cursor-not-allowed"
-                                >
-                                    {loading ? '⏳ Processing...' : '✨ Execute Action'}
-                                </button>
-
-                                {/* JSON Output */}
-                                {translationJson && (
-                                    <div className="mt-6">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className="text-sm font-medium text-slate-300">JSON Output</label>
-                                            <button
-                                                onClick={() => copyToClipboard(translationJson)}
-                                                className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-cyan-400 rounded transition-all"
-                                            >
-                                                📋 Copy
-                                            </button>
-                                        </div>
-                                        <textarea
-                                            readOnly
-                                            value={translationJson}
-                                            className="w-full h-48 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-300 text-xs font-mono"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* CRM Ops Team Section */}
-                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                                <h3 className="text-xl font-bold text-white mb-6">⚙️ CRM Ops Team</h3>
-
-                                {/* Action Dropdown */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-slate-300 mb-2">Action</label>
-                                    <select
-                                        value={opsAction}
-                                        onChange={(e) => {
-                                            setOpsAction(e.target.value);
-                                            setOpsJson('');
-                                        }}
-                                        className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
-                                    >
-                                        <option value="view">👁️ View Bonus</option>
-                                        <option value="fetch">📥 Fetch Bonus Data</option>
-                                        <option value="create">🆕 Create Bonus JSON</option>
-                                    </select>
-                                </div>
-
-                                {/* Format Dropdown (for Fetch/Create) */}
-                                {(opsAction === 'fetch' || opsAction === 'create') && (
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Format</label>
-                                        <select
-                                            value={opsFormat}
-                                            onChange={(e) => setOpsFormat(e.target.value)}
-                                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
-                                        >
-                                            <option value="json">JSON</option>
-                                            <option value="csv">CSV</option>
-                                            <option value="xml">XML</option>
-                                        </select>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={handleOpsAction}
-                                    disabled={loading}
-                                    className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-all disabled:cursor-not-allowed"
-                                >
-                                    {loading ? '⏳ Processing...' : '✨ Execute Action'}
-                                </button>
-
-                                {/* JSON Output */}
-                                {opsJson && (
-                                    <div className="mt-6">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className="text-sm font-medium text-slate-300">JSON Output</label>
-                                            <button
-                                                onClick={() => copyToClipboard(opsJson)}
-                                                className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-400 rounded transition-all"
-                                            >
-                                                📋 Copy
-                                            </button>
-                                        </div>
-                                        <textarea
-                                            readOnly
-                                            value={opsJson}
-                                            className="w-full h-48 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-300 text-xs font-mono"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                )
+                }
             </div>
+
+            {/* View/Edit Modal */}
+            {modalOpen && (
+                <ViewEditBonusModal
+                    bonusId={modalBonusId}
+                    mode={modalMode}
+                    onClose={handleModalClose}
+                    onSave={handleModalSave}
+                />
+            )}
         </div>
     );
 }

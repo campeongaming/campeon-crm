@@ -94,6 +94,19 @@ class BonusTemplateResponse(BonusTemplateCreate):
         from_attributes = True
 
 
+class BonusTemplatePatch(BaseModel):
+    """Schema for partially updating a bonus template"""
+    schedule_from: Optional[str] = None
+    schedule_to: Optional[str] = None
+    trigger_name: Optional[Dict[str, str]] = None
+    trigger_description: Optional[Dict[str, str]] = None
+    percentage: Optional[float] = None
+    wagering_multiplier: Optional[float] = None
+    expiry: Optional[str] = None
+    trigger_duration: Optional[str] = None
+    trigger_iterations: Optional[int] = None
+
+
 class BonusTranslationCreate(BaseModel):
     """Schema for creating translation for a bonus"""
     language: str
