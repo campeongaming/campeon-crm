@@ -23,7 +23,7 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-            <div className="w-full px-10 py-14">
+            <div className="w-full px-10 py-10">
 
                 {/* Header */}
                 <header className="mb-6 border-b border-slate-700/50">
