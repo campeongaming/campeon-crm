@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "CAMPEON CRM - Offer Management",
-    description: "Collaborative platform for casino offers and translations",
+    title: "BonusLab - Collaborative Bonus Management System",
+    description: "Collaborative Bonus Management System",
 };
 
 export default function RootLayout({

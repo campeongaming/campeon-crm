@@ -445,7 +445,7 @@ export default function AdminPanel() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950">
+        <div className="space-y-6">
             {/* Main Container - Centered with max-width */}
             <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
 

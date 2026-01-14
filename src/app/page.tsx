@@ -23,17 +23,23 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-            <div className="w-full px-2 py-10">
+            <div className="w-full px-10 py-14">
+
                 {/* Header */}
-                <header className="mb-10 pb-6 border-b border-slate-700/50">
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="text-5xl">🎰</span>
-                        <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                            CAMPEON CRM
-                        </h1>
+                <header className="mb-6 border-b border-slate-700/50">
+                    <div className="flex items-center h-30 px-0">
+                        <img
+                            src="/Bonuslab_transparent.png"
+                            alt="BonusLab"
+                            className="h-20 w-auto object-contain"
+                        />
                     </div>
-                    <p className="text-slate-400 text-lg">Collaborative Bonus Offer Management System</p>
                 </header>
+
+
+
+
+
 
                 {/* Tabs */}
                 <div className="flex gap-3 mb-8 overflow-x-auto pb-3 border-b border-slate-700/60">
