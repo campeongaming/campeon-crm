@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import AwardFreeSpins from './AwardFreeSpins';
 import ReloadBonusForm from './ReloadBonusForm';
+import CashbackForm from './CashbackForm';
 
 export default function BonusTypeSelector({ onBonusSaved }: { onBonusSaved?: () => void }) {
     const [selectedType, setSelectedType] = useState('free_spins');
@@ -29,6 +30,7 @@ export default function BonusTypeSelector({ onBonusSaved }: { onBonusSaved?: () 
                 >
                     <option value="free_spins" className="bg-slate-800">🎟️ Award Free Spins</option>
                     <option value="reload" className="bg-slate-800">🔄 Reload Bonus</option>
+                    <option value="cashback" className="bg-slate-800">💰 Cashback Bonus</option>
                 </select>
             </div>
 
@@ -38,6 +40,7 @@ export default function BonusTypeSelector({ onBonusSaved }: { onBonusSaved?: () 
                 <div className="col-span-2">
                     {selectedType === 'free_spins' && <AwardFreeSpins notes={notes} setNotes={setNotes} onBonusSaved={onBonusSaved} />}
                     {selectedType === 'reload' && <ReloadBonusForm notes={notes} setNotes={setNotes} onBonusSaved={onBonusSaved} />}
+                    {selectedType === 'cashback' && <CashbackForm notes={notes} setNotes={setNotes} onBonusSaved={onBonusSaved} />}
                 </div>
 
                 {/* Right: Notes Box (1/3 width) */}

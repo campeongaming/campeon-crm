@@ -49,8 +49,8 @@ export const BONUS_TYPES: Record<BonusType, BonusTypeConfig> = {
     CASHBACK: {
         type: 'CASHBACK',
         label: 'Cashback Bonus',
-        description: 'Percentage cashback on losses',
-        fields: ['percentage'],
+        description: 'Cash reward based on player losses',
+        fields: ['percentage', 'wageringMultiplier', 'maximumAmount', 'minStake', 'maxStake'],
     },
 };
 

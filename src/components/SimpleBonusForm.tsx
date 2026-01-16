@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import React from 'react';
 import { API_ENDPOINTS } from '@/lib/api-config';
-import BonusWizard from '@/components/BonusWizard';
 
 const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN', 'GBP', 'PLN', 'PEN', 'ZAR', 'CHF', 'NGN', 'JPY', 'AZN', 'TRY', 'KZT', 'RUB', 'UZS'];
 

@@ -644,16 +644,10 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     # Build the config section manually as a string
     import json as json_lib
 
-    # Only include cost, multiplier, maximumBets for free_spins bonuses
-    config_dict = {
-        "provider": template.provider,
-        "brand": template.brand,
-        "type": template.bonus_type,
-        "category": template.category,
-        "maximumWithdraw": maximum_withdraw_formatted,
-    }
+    # Build config_dict with cost/multiplier/maximumBets first for free_spins
+    config_dict = {}
 
-    # Add free_spins specific fields only if bonus_type is free_spins and they have values
+    # Add free_spins specific fields FIRST if bonus_type is free_spins and they have values
     if template.bonus_type == 'free_spins':
         if template.cost:
             config_dict["cost"] = template.cost
@@ -661,6 +655,13 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
             config_dict["multiplier"] = template.multiplier
         if template.maximum_bets:
             config_dict["maximumBets"] = template.maximum_bets
+
+    # Then add the common fields
+    config_dict["provider"] = template.provider
+    config_dict["brand"] = template.brand
+    config_dict["type"] = template.bonus_type
+    config_dict["category"] = template.category
+    config_dict["maximumWithdraw"] = maximum_withdraw_formatted
 
     config_json = json_lib.dumps(config_dict, indent=2)
 

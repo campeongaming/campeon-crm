@@ -406,7 +406,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
             // Flatten for database storage
             const payload: any = {
                 id: gameId,
-                bonus_type: triggerType,
+                bonus_type: 'free_spins',
                 trigger_type: triggerType,
                 trigger_duration: duration,
                 ...(iterationsOptional && { trigger_iterations: iterations }),
