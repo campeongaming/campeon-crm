@@ -471,29 +471,33 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6 bg-slate-800/50 rounded-lg border border-slate-700/60">
-            <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">🎰 Award Free Spins</h2>
+        <div className="space-y-5">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-cyan-500/90 via-blue-500/90 to-indigo-500/90 p-8 rounded-2xl shadow-xl backdrop-blur-sm border border-white/10">
+                <h2 className="text-3xl font-bold text-white drop-shadow-md">🎰 Award Free Spins</h2>
+                <p className="text-cyan-50 mt-3 text-lg font-medium">Create a free spins bonus with customizable parameters</p>
+            </div>
 
             {/* Errors */}
             {errors.length > 0 && (
-                <div className="mb-6 p-4 bg-red-900/20 border border-red-700/60 rounded-lg">
-                    <p className="font-semibold text-red-400 mb-2">⚠️ Errors:</p>
+                <div className="bg-red-500/10 border border-red-400/40 rounded-xl p-5 backdrop-blur-sm shadow-md">
+                    <p className="font-semibold text-red-100 mb-3 text-lg">⚠️ Validation Errors:</p>
                     {errors.map((err, i) => (
-                        <p key={i} className="text-red-300 text-sm">• {err}</p>
+                        <p key={i} className="text-red-200 text-base">• {err}</p>
                     ))}
                 </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-5">
                 {/* Game ID */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-blue-500/40">
-                    <label className="block text-sm font-semibold text-slate-100 mb-2">Game ID *</label>
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-cyan-400/20 backdrop-blur-sm shadow-lg hover:border-cyan-400/40 transition-all">
+                    <label className="block text-base font-semibold text-slate-200 mb-2">Game ID *</label>
                     <input
                         type="text"
                         value={gameId}
                         onChange={(e) => setGameId(e.target.value)}
                         placeholder="e.g., Deposit 50 Get 600 FS on Bigger Bass Blizzard"
-                        className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                        className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                     />
                 </div>
 
@@ -570,15 +574,15 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 </div>
 
                 {/* ============ SCHEDULE (OPTIONAL) ============ */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-purple-500/40">
-                    <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">📅 Schedule (Optional)</h3>
+                <div className="p-6 bg-slate-700/30 rounded-xl border border-purple-400/30 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent mb-5">📅 Schedule (Optional)</h3>
 
-                    <label className="flex items-center text-sm font-medium text-slate-100 mb-4 cursor-pointer">
+                    <label className="flex items-center text-base font-medium text-slate-50 mb-5 cursor-pointer hover:text-white transition-colors">
                         <input
                             type="checkbox"
                             checked={withSchedule}
                             onChange={(e) => setWithSchedule(e.target.checked)}
-                            className="mr-2 w-4 h-4"
+                            className="mr-3 w-5 h-5 cursor-pointer"
                         />
                         Enable time-boxed promo
                     </label>
@@ -586,22 +590,22 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                     {withSchedule && (
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">From</label>
+                                <label className="block text-base font-semibold text-slate-200 mb-2">From</label>
                                 <input
                                     type="datetime-local"
                                     value={scheduleFrom}
                                     onChange={(e) => setScheduleFrom(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/50 rounded-lg text-slate-50 bg-slate-800/60 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">To</label>
+                                <label className="block text-base font-semibold text-slate-200 mb-2">To</label>
                                 <input
                                     type="datetime-local"
                                     value={scheduleTo}
                                     onChange={(e) => setScheduleTo(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/50 rounded-lg text-slate-50 bg-slate-800/60 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
                                 />
                             </div>
                         </div>
@@ -609,8 +613,8 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 </div>
 
                 {/* ============ TRIGGER ============ */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-amber-500/40">
-                    <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">🎯 Trigger</h3>
+                <div className="p-6 bg-slate-700/30 rounded-xl border border-amber-400/30 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-amber-300 to-yellow-300 bg-clip-text text-transparent mb-5">🎯 Trigger</h3>
 
                     <div className="space-y-4">
                         {/* Require Minimum Deposit Checkbox */}

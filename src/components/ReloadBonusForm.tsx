@@ -328,15 +328,19 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6 bg-slate-800/50 rounded-lg border border-slate-700/60">
-            <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">🔄 Reload Bonus</h2>
+        <div className="space-y-5">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-cyan-500/90 via-blue-500/90 to-indigo-500/90 p-8 rounded-2xl shadow-xl backdrop-blur-sm border border-white/10">
+                <h2 className="text-3xl font-bold text-white drop-shadow-md">🔄 Reload/Deposit Bonus</h2>
+                <p className="text-cyan-50 mt-3 text-lg font-medium">Create reload or deposit bonuses with customizable parameters</p>
+            </div>
 
             {/* Errors */}
             {errors.length > 0 && (
-                <div className="mb-6 p-4 bg-red-900/20 border border-red-700/60 rounded-lg">
-                    <p className="font-semibold text-red-400 mb-2">⚠️ Errors:</p>
+                <div className="bg-red-500/10 border border-red-400/40 rounded-xl p-5 backdrop-blur-sm shadow-md">
+                    <p className="font-semibold text-red-100 mb-3 text-lg">⚠️ Validation Errors:</p>
                     {errors.map((err, i) => (
-                        <p key={i} className="text-red-300 text-sm">• {err}</p>
+                        <p key={i} className="text-red-200 text-base">• {err}</p>
                     ))}
                 </div>
             )}

@@ -219,38 +219,38 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
 
     // ============ RENDER ============
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-lg">
-                <h2 className="text-2xl font-bold text-white">💰 Cashback Bonus</h2>
-                <p className="text-purple-100 mt-2">Cash reward based on player losses</p>
+            <div className="bg-gradient-to-br from-cyan-500/90 via-blue-500/90 to-indigo-500/90 p-8 rounded-2xl shadow-xl backdrop-blur-sm border border-white/10">
+                <h2 className="text-3xl font-bold text-white drop-shadow-md">💰 Cashback Bonus</h2>
+                <p className="text-cyan-50 mt-3 text-lg font-medium">Cash reward based on player losses</p>
             </div>
 
             {loadingAdmin && (
-                <div className="bg-blue-500/20 border border-blue-500 rounded p-4 text-blue-200">
-                    ⏳ Loading admin configuration tables...
+                <div className="bg-cyan-500/10 border border-cyan-400/40 rounded-xl p-5 backdrop-blur-sm shadow-md">
+                    <span className="text-lg">⏳</span> <span className="text-cyan-100 font-medium">Loading admin configuration tables...</span>
                 </div>
             )}
 
             {/* Validation Errors */}
             {errors.length > 0 && (
-                <div className="bg-red-500/20 border border-red-500 rounded p-4">
-                    <p className="text-red-200 font-semibold mb-2">⚠️ Validation Errors:</p>
-                    <ul className="list-disc list-inside text-red-300 space-y-1">
+                <div className="bg-red-500/10 border border-red-400/40 rounded-xl p-5 backdrop-blur-sm shadow-md">
+                    <p className="text-red-100 font-semibold mb-3 text-lg">⚠️ Validation Errors:</p>
+                    <ul className="list-disc list-inside text-red-200 space-y-2 text-base">
                         {errors.map((err, idx) => <li key={idx}>{err}</li>)}
                     </ul>
                 </div>
             )}
 
             {/* Trigger Name (Multilingual) */}
-            <div className="bg-slate-800 p-6 rounded-lg space-y-4">
-                <h3 className="text-lg font-semibold text-white">🎯 Trigger Name</h3>
+            <div className="p-6 bg-slate-700/20 rounded-xl border border-cyan-400/20 backdrop-blur-sm shadow-lg hover:border-cyan-400/40 transition-all">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent mb-5">🎯 Trigger Name</h3>
                 <div className="space-y-3">
                     <div className="flex gap-2">
                         <select
                             value={currentLocale}
                             onChange={(e) => setCurrentLocale(e.target.value)}
-                            className="px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                         >
                             <option value="*">* (Fallback)</option>
                             {SUPPORTED_LOCALES.map(locale => (
@@ -262,7 +262,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                             value={triggerName[currentLocale] || ''}
                             onChange={(e) => setTriggerName({ ...triggerName, [currentLocale]: e.target.value })}
                             placeholder={`Trigger name for ${currentLocale}`}
-                            className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="flex-1 px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
                     <p className="text-sm text-slate-400">
