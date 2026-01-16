@@ -345,7 +345,7 @@ export default function TranslationTeam() {
     };
 
     return (
-        <div className="space-y-6 px-1 py-4 w-full">
+        <div className="space-y-6">
             <div className="bg-slate-700/50 border border-slate-600 rounded p-4">
                 <h2 className="text-xl font-bold text-green-400 mb-4">🌐 Add Translations</h2>
                 <p className="text-slate-300 text-sm">Search or browse bonuses by month, then provide translations in multiple languages.</p>

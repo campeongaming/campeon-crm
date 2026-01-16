@@ -13,6 +13,10 @@ interface AdminConfig {
     minimum_amount?: CurrencyTable[];
     cost?: CurrencyTable[];
     maximum_withdraw?: CurrencyTable[];
+    minimum_stake_to_wager?: CurrencyTable[];
+    maximum_stake_to_wager?: CurrencyTable[];
+    maximum_amount?: CurrencyTable[];
+    maximum_bets?: CurrencyTable[];
 }
 
 const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN', 'GBP', 'PLN', 'PEN', 'ZAR', 'CHF', 'NGN', 'JPY', 'AZN', 'TRY', 'KZT', 'RUB', 'UZS'];
@@ -47,7 +51,10 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
 
     // Config section
     const [costEUR, setCostEUR] = useState(0.12);
-    const [maximumBets, setMaximumBets] = useState(600);
+    const [maximumBetsEUR, setMaximumBetsEUR] = useState(600);
+    const [minStakeEUR, setMinStakeEUR] = useState(0);
+    const [maxStakeEUR, setMaxStakeEUR] = useState(600);
+    const [maxAmountEUR, setMaxAmountEUR] = useState(100);
     const [brand, setBrand] = useState('PRAGMATIC');
     const [configType, setConfigType] = useState('free_bet');
     const [withdrawActive, setWithdrawActive] = useState(false);
@@ -73,8 +80,23 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
         const fetchAdminConfig = async () => {
             try {
                 setLoadingAdmin(true);
-                const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}?cost_only=true`);
-                setAdminConfig(response.data);
+
+                // Fetch cost from provider (PRAGMATIC/BETSOFT)
+                console.log(`🔍 Fetching from ${provider} provider for cost tables...`);
+                const providerResponse = await axios.get(`http://localhost:8000/api/stable-config/${provider}/with-tables`);
+
+                // Fetch all other tables from DEFAULT (minimum_amount, maximum_withdraw, stakes, amounts, etc.)
+                console.log('🔍 Fetching from DEFAULT provider for other tables...');
+                const defaultResponse = await axios.get(`http://localhost:8000/api/stable-config/DEFAULT/with-tables`);
+
+                // Merge: cost from provider, everything else from DEFAULT
+                const mergedConfig: AdminConfig = {
+                    ...defaultResponse.data,
+                    cost: providerResponse.data.cost || [],
+                };
+
+                setAdminConfig(mergedConfig);
+                console.log('✅ Fetched admin config - cost from', provider, ', other tables from DEFAULT:', mergedConfig);
             } catch (err) {
                 console.error('Failed to fetch admin config:', err);
                 setAdminConfig(null);
@@ -132,10 +154,14 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
     };
 
     // ============ BUILD CURRENCY MAP FROM ADMIN ============
-    const buildCurrencyMap = (eurValue: number, fieldName: 'minimum_amount' | 'cost' | 'maximum_withdraw'): Record<string, number> => {
+    const buildCurrencyMap = (
+        eurValue: number,
+        fieldName: 'minimum_amount' | 'cost' | 'maximum_withdraw' | 'minimum_stake_to_wager' | 'maximum_stake_to_wager' | 'maximum_amount' | 'maximum_bets'
+    ): Record<string, number> => {
+        const tolerance = 0.001;
+
         // 🎯 For cost field, ALWAYS search for matching table by EUR value
         if (fieldName === 'cost' && adminConfig && adminConfig.cost) {
-            const tolerance = 0.001;
             for (const table of adminConfig.cost) {
                 if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
                     console.log('✅ Found matching cost table for EUR =', eurValue, ':', table.values);
@@ -146,8 +172,43 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
             console.warn('⚠️ No exact cost table found for EUR =', eurValue, '- using defaults');
         }
 
-        // For non-cost fields (minimum_amount, maximum_withdraw), just use the user's input value
-        // These are NOT tied to provider/admin config
+        // 🎯 For minimum_amount field, search admin config tables
+        if (fieldName === 'minimum_amount' && adminConfig && adminConfig.minimum_amount) {
+            for (const table of adminConfig.minimum_amount) {
+                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
+                    console.log('✅ Found matching minimum_amount table for EUR =', eurValue, ':', table.values);
+                    // "*" is ALWAYS the EUR value
+                    return { '*': table.values.EUR, ...table.values };
+                }
+            }
+            console.warn('⚠️ No exact minimum_amount table found for EUR =', eurValue, '- using defaults');
+        }
+
+        // 🎯 For maximum_withdraw field, search admin config tables
+        if (fieldName === 'maximum_withdraw' && adminConfig && adminConfig.maximum_withdraw) {
+            for (const table of adminConfig.maximum_withdraw) {
+                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
+                    console.log('✅ Found matching maximum_withdraw table for EUR =', eurValue, ':', table.values);
+                    return { '*': table.values.EUR, ...table.values };
+                }
+            }
+            console.warn('⚠️ No exact maximum_withdraw table found for EUR =', eurValue, '- using defaults');
+        }
+
+        // 🎯 For all other fields, search admin config tables
+        const tableKey = fieldName as keyof AdminConfig;
+        if (adminConfig && adminConfig[tableKey]) {
+            const tables = adminConfig[tableKey] as CurrencyTable[];
+            for (const table of tables) {
+                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
+                    console.log(`✅ Found matching ${fieldName} table for EUR =`, eurValue, ':', table.values);
+                    return { '*': table.values.EUR, ...table.values };
+                }
+            }
+            console.warn(`⚠️ No exact ${fieldName} table found for EUR =`, eurValue, '- using defaults');
+        }
+
+        // Fallback: use the same EUR value for all currencies
         const map: Record<string, number> = { '*': eurValue };
         CURRENCIES.forEach(curr => {
             map[curr] = eurValue;
@@ -166,8 +227,8 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
             const cost = costMap[curr] || costEUR;
             if (cost > 0) {
                 const fsValue = minAmount / cost;
-                // Use minFsAmount if "Up To" is enabled, otherwise use maximumBets
-                const baseValue = upTo ? (minFsAmount[curr] || 50) : maximumBets;
+                // Use minFsAmount if "Up To" is enabled, otherwise use maximumBetsEUR
+                const baseValue = upTo ? (minFsAmount[curr] || 50) : maximumBetsEUR;
                 multiplierMap[curr] = parseFloat((baseValue / fsValue).toFixed(4));
             } else {
                 multiplierMap[curr] = 1;
@@ -271,7 +332,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
         if (!gameId.trim()) newErrors.push('Game ID is required');
         if (withMinimumAmount && minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
         if (costEUR <= 0) newErrors.push('Cost must be > 0');
-        if (maximumBets <= 0) newErrors.push('Maximum bets must be > 0');
+        if (maximumBetsEUR <= 0) newErrors.push('Maximum bets must be > 0');
         if (maximumWithdrawEUR <= 0) newErrors.push('Maximum withdraw must be > 0');
         if (!game.trim()) newErrors.push('Game name is required');
         if (withSchedule && (!scheduleFrom || !scheduleTo)) newErrors.push('Both schedule dates required if enabled');
@@ -331,7 +392,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
             bonusJson.config = {
                 cost: buildCurrencyMap(costEUR, 'cost'),
                 multiplier: multiplierMap,
-                maximumBets: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
+                maximumBets: buildCurrencyMap(maximumBetsEUR, 'maximum_bets'),
                 maximumWithdraw: maxWithdrawObjects,
                 provider: provider,
                 brand: brand,
@@ -360,10 +421,10 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 ...(withMinimumAmount && { minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount') }),
                 cost: buildCurrencyMap(costEUR, 'cost'),
                 multiplier: buildMultiplierMap(),
-                maximum_bets: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
-                minimum_stake_to_wager: Object.fromEntries(CURRENCIES.map(c => [c, 0])),
-                maximum_stake_to_wager: Object.fromEntries(CURRENCIES.map(c => [c, maximumBets])),
-                maximum_amount: buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw'),
+                maximum_bets: buildCurrencyMap(maximumBetsEUR, 'maximum_bets'),
+                minimum_stake_to_wager: buildCurrencyMap(minStakeEUR, 'minimum_stake_to_wager'),
+                maximum_stake_to_wager: buildCurrencyMap(maxStakeEUR, 'maximum_stake_to_wager'),
+                maximum_amount: buildCurrencyMap(maxAmountEUR, 'maximum_amount'),
                 maximum_withdraw: buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw'),
                 include_amount_on_target_wager: includeAmount,
                 cap_calculation_to_maximum: capCalculation,
@@ -615,7 +676,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                                         type="number"
                                         value={iterations}
                                         onChange={(e) => setIterations(parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-slate-100 bg-white mt-1"
+                                        className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer mt-1"
                                     />
                                 )}
                             </div>
@@ -644,11 +705,62 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Bets *</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Bets (EUR) *</label>
                                 <input
                                     type="number"
-                                    value={maximumBets}
-                                    onChange={(e) => setMaximumBets(parseFloat(e.target.value))}
+                                    value={maximumBetsEUR}
+                                    onChange={(e) => setMaximumBetsEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 600"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Stake to Wager (EUR) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={minStakeEUR}
+                                    onChange={(e) => setMinStakeEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 0"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Stake to Wager (EUR) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={maxStakeEUR}
+                                    onChange={(e) => setMaxStakeEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 600"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Amount (EUR) *</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={maxAmountEUR}
+                                    onChange={(e) => setMaxAmountEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 100"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Withdraw (EUR) *</label>
+                                <input
+                                    type="number"
+                                    value={maximumWithdrawEUR}
+                                    onChange={(e) => setMaximumWithdrawEUR(parseFloat(e.target.value))}
                                     className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
@@ -722,16 +834,6 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                                     <option value="live_casino">Live Casino</option>
                                     <option value="sports_book">Sports Book</option>
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Withdraw (EUR) *</label>
-                                <input
-                                    type="number"
-                                    value={maximumWithdrawEUR}
-                                    onChange={(e) => setMaximumWithdrawEUR(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                />
                             </div>
                         </div>
 

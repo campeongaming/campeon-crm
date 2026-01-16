@@ -185,7 +185,7 @@ export default function BonusBrowser() {
 
     return (
         <div className="space-y-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-white mb-2">📅 Bonus Browser</h1>

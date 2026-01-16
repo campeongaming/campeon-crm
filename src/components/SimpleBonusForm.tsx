@@ -6,10 +6,27 @@ import React from 'react';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import BonusWizard from '@/components/BonusWizard';
 
+const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN', 'GBP', 'PLN', 'PEN', 'ZAR', 'CHF', 'NGN', 'JPY', 'AZN', 'TRY', 'KZT', 'RUB', 'UZS'];
+
+interface CurrencyTable {
+    id: string;
+    name: string;
+    values: Record<string, number>;
+}
+
+interface AdminConfig {
+    cost?: CurrencyTable[];
+    minimum_amount?: CurrencyTable[];
+    maximum_amount?: CurrencyTable[];
+    maximum_withdraw?: CurrencyTable[];
+}
+
 interface BonusFormData {
     id: string;
     provider: string;
     cost_eur: number;
+    minimum_deposit_eur: number;
+    maximum_amount_eur: number;
     percentage: number;
     wagering_multiplier: number;
     schedule_type: string;
@@ -26,6 +43,8 @@ export default function SimpleBonusForm() {
         id: '',
         provider: 'PRAGMATIC',
         cost_eur: 0.2,
+        minimum_deposit_eur: 25,
+        maximum_amount_eur: 100,
         percentage: 200,
         wagering_multiplier: 15,
         schedule_type: 'period',
@@ -37,9 +56,50 @@ export default function SimpleBonusForm() {
         notes: '',
     });
 
+    const [adminConfig, setAdminConfig] = useState<AdminConfig | null>(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [showWizard, setShowWizard] = useState(true);
+
+    // ============ FETCH ADMIN CONFIG TABLES ============
+    useEffect(() => {
+        const fetchAdminConfig = async () => {
+            try {
+                console.log(`🔍 Fetching admin config from ${formData.provider}...`);
+                const response = await axios.get(`http://localhost:8000/api/stable-config/${formData.provider}/with-tables`);
+                console.log('📦 Admin config response:', response.data);
+                setAdminConfig(response.data as AdminConfig);
+            } catch (error) {
+                console.error('❌ Error fetching admin config:', error);
+            }
+        };
+        fetchAdminConfig();
+    }, [formData.provider]);
+
+    // ============ MULTI-CURRENCY LOOKUP FUNCTION ============
+    const buildCurrencyMap = (eurValue: number, fieldName: 'cost' | 'minimum_amount' | 'maximum_amount' | 'maximum_withdraw'): Record<string, number> => {
+        if (!adminConfig) {
+            console.warn(`⚠️ Admin config not loaded yet`);
+            return Object.fromEntries(CURRENCIES.map(c => [c, eurValue]));
+        }
+
+        const tables = adminConfig[fieldName];
+        if (!tables || !Array.isArray(tables)) {
+            console.warn(`⚠️ No ${fieldName} tables found in admin config`);
+            return Object.fromEntries(CURRENCIES.map(c => [c, eurValue]));
+        }
+
+        const tolerance = 0.001;
+        for (const table of tables) {
+            if (Math.abs(table.values.EUR - eurValue) < tolerance) {
+                console.log(`✅ Found matching ${fieldName} table for EUR = ${eurValue}:`, table.values);
+                return { '*': table.values.EUR, ...table.values };
+            }
+        }
+
+        console.warn(`⚠️ No matching ${fieldName} table found for EUR = ${eurValue}`);
+        return Object.fromEntries(CURRENCIES.map(c => [c, eurValue]));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -54,7 +114,12 @@ export default function SimpleBonusForm() {
         e.preventDefault();
         setLoading(true);
         try {
-            // Build payload, excluding empty schedule fields
+            // Build payload using multi-currency lookups from admin config
+            const cost = buildCurrencyMap(formData.cost_eur, 'cost');
+            const minimum_amount = buildCurrencyMap(formData.minimum_deposit_eur, 'minimum_amount');
+            const maximum_amount = buildCurrencyMap(formData.maximum_amount_eur, 'maximum_amount');
+            const maximum_withdraw = buildCurrencyMap(100, 'maximum_withdraw'); // Default to 100
+
             const payload: any = {
                 id: formData.id,
                 trigger_name: { '*': `${formData.provider} Bonus` },
@@ -64,11 +129,12 @@ export default function SimpleBonusForm() {
                 trigger_duration: '7d',
                 percentage: formData.percentage,
                 wagering_multiplier: formData.wagering_multiplier,
-                minimum_amount: { '*': 25 },
-                maximum_amount: { '*': 300 },
+                minimum_amount: minimum_amount,
+                maximum_amount: maximum_amount,
+                cost: cost,
                 minimum_stake_to_wager: { '*': 0.5 },
                 maximum_stake_to_wager: { '*': 5 },
-                maximum_withdraw: { '*': 3 },
+                maximum_withdraw: maximum_withdraw,
                 include_amount_on_target_wager: true,
                 compensate_overspending: true,
                 withdraw_active: false,
@@ -86,12 +152,16 @@ export default function SimpleBonusForm() {
                 payload.schedule_to = formData.schedule_to;
             }
 
+            console.log('🚀 Submitting payload:', payload);
+
             const response = await axios.post(API_ENDPOINTS.BONUS_TEMPLATES, payload);
             setMessage(`✅ Bonus created! ID: ${response.data.id}`);
             setFormData({
                 id: '',
                 provider: 'PRAGMATIC',
                 cost_eur: 0.2,
+                minimum_deposit_eur: 25,
+                maximum_amount_eur: 100,
                 percentage: 200,
                 wagering_multiplier: 15,
                 schedule_type: 'period',
@@ -100,6 +170,7 @@ export default function SimpleBonusForm() {
                 trigger_type: 'reload',
                 category: 'GAMES',
                 bonus_type: 'cash',
+                notes: '',
             });
             setTimeout(() => setMessage(''), 4000);
         } catch (error: any) {
@@ -180,7 +251,7 @@ export default function SimpleBonusForm() {
                                     onChange={handleChange}
                                     className="input-field"
                                 />
-                                <p className="text-xs text-slate-400 mt-2">💡 Other currencies auto-filled from stable values</p>
+                                <p className="text-xs text-slate-400 mt-2">💡 Other currencies auto-filled from admin config</p>
                             </div>
                             <div>
                                 <label className="label-text">Bonus %</label>
@@ -192,6 +263,38 @@ export default function SimpleBonusForm() {
                                     className="input-field"
                                     placeholder="200"
                                 />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 2.5: Min Deposit & Max Amount */}
+                    <div className="card">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="label-text">Min Deposit Amount (EUR)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    name="minimum_deposit_eur"
+                                    value={formData.minimum_deposit_eur}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    placeholder="25"
+                                />
+                                <p className="text-xs text-slate-400 mt-2">💡 Loads all currencies from admin config</p>
+                            </div>
+                            <div>
+                                <label className="label-text">Maximum Amount (EUR)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    name="maximum_amount_eur"
+                                    value={formData.maximum_amount_eur}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    placeholder="100"
+                                />
+                                <p className="text-xs text-slate-400 mt-2">💡 Loads all currencies from admin config</p>
                             </div>
                         </div>
                     </div>

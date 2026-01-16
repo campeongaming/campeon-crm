@@ -14,6 +14,27 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
+/* Animated gradient background */
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.animated-gradient {
+    background: linear-gradient(-45deg, #0c4a6e, #0369a1, #7c3aed, #0284c7, #8b5cf6, #075985, #6366f1, #0e7490);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;

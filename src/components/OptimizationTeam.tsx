@@ -237,7 +237,7 @@ export default function OptimizationTeam() {
         <div className="space-y-6">
             <div className="bg-slate-700/50 border border-slate-600 rounded p-4">
                 <h2 className="text-xl font-bold text-purple-400 mb-4">📊 Optimization Team - JSON Generator</h2>
-                <p className="text-slate-300 text-sm">Search or browse bonuses by month, preview the JSON, and download as a ZIP file with config.json.</p>
+                <p className="text-slate-300 text-sm">Search or browse bonuses by month/id, preview/edit the JSON, and download it.</p>
             </div>
 
             {/* Search by Bonus ID */}
@@ -455,7 +455,7 @@ export default function OptimizationTeam() {
 
                     {validationErrors.length === 0 && jsonOutput && (
                         <div className="bg-green-900/30 border border-green-600 rounded p-4">
-                            <p className="text-green-400 font-semibold">✅ JSON is valid and ready!</p>
+                            <p className="text-green-400 font-semibold">✅ JSON is valid!</p>
                         </div>
                     )}
 

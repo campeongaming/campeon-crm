@@ -483,26 +483,37 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         StableConfig.provider == template.provider
     ).first()
 
-    # Build maximumWithdraw in the nested format with "cap"
-    # Use stored template data if available, fallback to admin config
+    # Build maximumWithdraw format based on bonus type
+    # For reload bonuses: use flat numbers (no "cap" wrapper)
+    # For other bonuses: use nested format with "cap"
     maximum_withdraw_formatted = {}
 
     print(f"DEBUG: template.maximum_withdraw = {template.maximum_withdraw}")
     print(
         f"DEBUG: template.maximum_withdraw type = {type(template.maximum_withdraw)}")
+    print(f"DEBUG: template.bonus_type = {template.bonus_type}")
 
     if template.maximum_withdraw:
         stored_data = template.maximum_withdraw
         print(f"DEBUG: Using stored data: {stored_data}")
-        # If stored as flat dict/JSON, convert to nested format
+        # If stored as flat dict/JSON, convert based on bonus type
         if isinstance(stored_data, dict):
             for curr, val in stored_data.items():
                 if isinstance(val, dict):
                     # Already nested format
-                    maximum_withdraw_formatted[curr] = val
+                    if template.bonus_type == 'reload':
+                        # Extract the cap value for reload bonuses
+                        maximum_withdraw_formatted[curr] = val.get('cap', val)
+                    else:
+                        maximum_withdraw_formatted[curr] = val
                 else:
-                    # Flat value, wrap in cap
-                    maximum_withdraw_formatted[curr] = {"cap": val}
+                    # Flat value
+                    if template.bonus_type == 'reload':
+                        # Keep flat for reload bonuses
+                        maximum_withdraw_formatted[curr] = val
+                    else:
+                        # Wrap in cap for other bonuses
+                        maximum_withdraw_formatted[curr] = {"cap": val}
     # Fallback to admin config if stored data is empty
     elif admin_config and admin_config.maximum_withdraw:
         print(f"DEBUG: Using admin config data")
@@ -512,7 +523,12 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
                 currency = item.get("currency")
                 cap = item.get("cap", 0)
                 if currency:
-                    maximum_withdraw_formatted[currency] = {"cap": cap}
+                    if template.bonus_type == 'reload':
+                        # Flat number for reload bonuses
+                        maximum_withdraw_formatted[currency] = cap
+                    else:
+                        # Nested format for other bonuses
+                        maximum_withdraw_formatted[currency] = {"cap": cap}
 
     print(
         f"DEBUG: Final maximum_withdraw_formatted = {maximum_withdraw_formatted}")
@@ -628,16 +644,25 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     # Build the config section manually as a string
     import json as json_lib
 
-    config_json = json_lib.dumps({
-        "cost": template.maximum_amount,
-        "multiplier": template.maximum_amount,
-        "maximumBets": template.maximum_stake_to_wager,
+    # Only include cost, multiplier, maximumBets for free_spins bonuses
+    config_dict = {
         "provider": template.provider,
         "brand": template.brand,
         "type": template.bonus_type,
         "category": template.category,
         "maximumWithdraw": maximum_withdraw_formatted,
-    }, indent=2)
+    }
+
+    # Add free_spins specific fields only if bonus_type is free_spins and they have values
+    if template.bonus_type == 'free_spins':
+        if template.cost:
+            config_dict["cost"] = template.cost
+        if template.multiplier:
+            config_dict["multiplier"] = template.multiplier
+        if template.maximum_bets:
+            config_dict["maximumBets"] = template.maximum_bets
+
+    config_json = json_lib.dumps(config_dict, indent=2)
 
     # Remove the closing brace from config
     config_json = config_json.rstrip()[:-1]  # Remove last }

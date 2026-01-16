@@ -11,7 +11,6 @@ interface CurrencyTable {
 
 interface AdminConfig {
     minimum_amount?: CurrencyTable[];
-    cost?: CurrencyTable[];
     maximum_withdraw?: CurrencyTable[];
     minimum_stake_to_wager?: CurrencyTable[];
     maximum_stake_to_wager?: CurrencyTable[];
@@ -43,8 +42,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
     // Trigger section
     const [minimumAmountEUR, setMinimumAmountEUR] = useState(25);
-    const [iterations, setIterations] = useState(1);
-    const [iterationsOptional, setIterationsOptional] = useState(false);
+    const [iterations, setIterations] = useState(0);
     const [triggerType, setTriggerType] = useState('deposit');
     const [duration, setDuration] = useState('7d');
     const [restrictedCountries, setRestrictedCountries] = useState<string[]>([]);
@@ -59,74 +57,39 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     const [expiry, setExpiry] = useState('7d');
     const [proportionsType, setProportionsType] = useState('casino');
 
-    // Selected tables from admin
-    const [selectedMinStakeTable, setSelectedMinStakeTable] = useState<Record<string, number> | null>(null);
-    const [selectedMaxStakeTable, setSelectedMaxStakeTable] = useState<Record<string, number> | null>(null);
-    const [selectedMaxAmountTable, setSelectedMaxAmountTable] = useState<Record<string, number> | null>(null);
-    const [selectedMaxWithdrawTable, setSelectedMaxWithdrawTable] = useState<Record<string, number> | null>(null);
-    const [selectedCasinoProportionsTable, setSelectedCasinoProportionsTable] = useState<Record<string, number> | null>(null);
-    const [selectedLiveCasinoProportionsTable, setSelectedLiveCasinoProportionsTable] = useState<Record<string, number> | null>(null);
+    // EUR values for searching admin config tables
+    const [minStakeEUR, setMinStakeEUR] = useState(0.5);
+    const [maxStakeEUR, setMaxStakeEUR] = useState(5);
+    const [maxAmountEUR, setMaxAmountEUR] = useState(100);
+    const [casinoProportionsEUR, setCasinoProportionsEUR] = useState(100);
+    const [liveCasinoProportionsEUR, setLiveCasinoProportionsEUR] = useState(100);
 
     // Validation
     const [errors, setErrors] = useState<string[]>([]);
 
-    // ============ FETCH COMMON TABLES (AMOUNTS, STAKES, WITHDRAWALS, WAGER, PROPORTIONS) ONCE ON MOUNT ============
-    // These are INDEPENDENT of provider - same for all providers
+    // ============ FETCH ALL TABLES FROM DEFAULT (provider is static 'SYSTEM') ============
     useEffect(() => {
         const fetchCommonTables = async () => {
             try {
                 setLoadingAdmin(true);
 
-                // Fetch from DEFAULT (provider-independent tables for amounts, stakes, withdrawals, proportions)
-                console.log('🔍 Fetching from DEFAULT provider...');
+                // Fetch ALL tables from DEFAULT (including cost, amounts, stakes, withdrawals, proportions)
+                console.log('🔍 Fetching ALL tables from DEFAULT provider...');
                 const response = await axios.get(`http://localhost:8000/api/stable-config/DEFAULT/with-tables`);
                 console.log('📦 Response data:', response.data);
                 const config = response.data as AdminConfig;
 
-                console.log('📦 Fetched COMMON tables from DEFAULT');
+                console.log('📦 Fetched ALL tables from DEFAULT');
+                console.log('  - minimum_amount:', config.minimum_amount);
                 console.log('  - minimum_stake_to_wager:', config.minimum_stake_to_wager);
                 console.log('  - maximum_stake_to_wager:', config.maximum_stake_to_wager);
                 console.log('  - maximum_amount:', config.maximum_amount);
                 console.log('  - maximum_withdraw:', config.maximum_withdraw);
 
-                // Extract first table from each array and set the selected tables
-                if (config.minimum_stake_to_wager && Array.isArray(config.minimum_stake_to_wager) && config.minimum_stake_to_wager[0]) {
-                    setSelectedMinStakeTable(config.minimum_stake_to_wager[0].values);
-                    console.log('✅ Set Min Stake:', config.minimum_stake_to_wager[0].values);
-                } else {
-                    console.log('⚠️ No minimum_stake_to_wager data found');
-                }
-                if (config.maximum_stake_to_wager && Array.isArray(config.maximum_stake_to_wager) && config.maximum_stake_to_wager[0]) {
-                    setSelectedMaxStakeTable(config.maximum_stake_to_wager[0].values);
-                    console.log('✅ Set Max Stake:', config.maximum_stake_to_wager[0].values);
-                } else {
-                    console.log('⚠️ No maximum_stake_to_wager data found');
-                }
-                if (config.maximum_amount && Array.isArray(config.maximum_amount) && config.maximum_amount[0]) {
-                    setSelectedMaxAmountTable(config.maximum_amount[0].values);
-                    console.log('✅ Set Max Amount:', config.maximum_amount[0].values);
-                } else {
-                    console.log('⚠️ No maximum_amount data found');
-                }
-                if (config.maximum_withdraw && Array.isArray(config.maximum_withdraw) && config.maximum_withdraw[0]) {
-                    setSelectedMaxWithdrawTable(config.maximum_withdraw[0].values);
-                    console.log('✅ Set Max Withdraw:', config.maximum_withdraw[0].values);
-                } else {
-                    console.log('⚠️ No maximum_withdraw data found');
-                }
-                if (config.casino_proportions && Array.isArray(config.casino_proportions) && config.casino_proportions[0]) {
-                    setSelectedCasinoProportionsTable(config.casino_proportions[0].values);
-                    console.log('✅ Set Casino Proportions:', config.casino_proportions[0].values);
-                } else {
-                    console.log('⚠️ No casino_proportions data found');
-                }
-                if (config.live_casino_proportions && Array.isArray(config.live_casino_proportions) && config.live_casino_proportions[0]) {
-                    setSelectedLiveCasinoProportionsTable(config.live_casino_proportions[0].values);
-                    console.log('✅ Set Live Casino Proportions:', config.live_casino_proportions[0].values);
-                } else {
-                    console.log('⚠️ No live_casino_proportions data found');
-                }
+                // Admin config loaded - user will enter EUR values to search tables
+                console.log('✅ Admin config loaded. User can now enter EUR values to search tables.');
 
+                // Store config
                 setAdminConfig(config);
             } catch (err: any) {
                 console.error('❌ Failed to fetch common tables:', err);
@@ -138,9 +101,56 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
         };
 
         fetchCommonTables();
-    }, []); // Empty dependency array - fetch ONCE on mount, never change based on provider
+    }, []); // Empty array - fetch once on mount, provider is static 'SYSTEM'
 
+    // ============ BUILD CURRENCY MAP FROM ADMIN ============
+    const buildCurrencyMap = (
+        eurValue: number,
+        fieldName: 'minimum_amount' | 'maximum_withdraw' | 'maximum_amount' | 'minimum_stake_to_wager' | 'maximum_stake_to_wager' | 'casino_proportions' | 'live_casino_proportions'
+    ): Record<string, number> => {
+        const tolerance = 0.001;
 
+        // 🎯 For minimum_amount field, search admin config tables
+        if (fieldName === 'minimum_amount' && adminConfig && adminConfig.minimum_amount) {
+            for (const table of adminConfig.minimum_amount) {
+                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
+                    console.log('✅ Found matching minimum_amount table for EUR =', eurValue, ':', table.values);
+                    // "*" is ALWAYS the EUR value
+                    return { '*': table.values.EUR, ...table.values };
+                }
+            }
+            console.warn('⚠️ No exact minimum_amount table found for EUR =', eurValue, '- using defaults');
+        }
+
+        // 🎯 For maximum_withdraw field, search admin config tables
+        if (fieldName === 'maximum_withdraw' && adminConfig && adminConfig.maximum_withdraw) {
+            for (const table of adminConfig.maximum_withdraw) {
+                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
+                    console.log('✅ Found matching maximum_withdraw table for EUR =', eurValue, ':', table.values);
+                    // "*" is ALWAYS the EUR value
+                    return { '*': table.values.EUR, ...table.values };
+                }
+            }
+            console.warn('⚠️ No exact maximum_withdraw table found for EUR =', eurValue, '- using defaults');
+        }
+
+        // Fallback: use the same EUR value for all currencies
+        const map: Record<string, number> = { '*': eurValue };
+        CURRENCIES.forEach(curr => {
+            map[curr] = eurValue;
+        });
+        return map;
+    };
+
+    // ============ CALCULATE MAX WITHDRAW BASED ON PERCENTAGE ============
+    const getMaxWithdrawMultiplier = (percentage: number): number => {
+        if (percentage >= 200) return 3;
+        if (percentage >= 150) return 6;
+        if (percentage >= 120) return 8;
+        if (percentage >= 100) return 10;
+        if (percentage >= 25) return 12;
+        return 12; // default fallback
+    };
 
     // ============ PARSE SEGMENTS FROM COMMA-SEPARATED INPUT ============
     const handleSegmentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,23 +258,29 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
         if (!validate()) return;
 
         try {
+            // Build maximum_withdraw with simple multiplier value for all currencies
+            const maxWithdrawMultiplier = getMaxWithdrawMultiplier(percentage);
+            const maxWithdrawMap: Record<string, number> = { '*': maxWithdrawMultiplier };
+            CURRENCIES.forEach(curr => {
+                maxWithdrawMap[curr] = maxWithdrawMultiplier;
+            });
+
             const payload: any = {
                 id: gameId,
                 bonus_type: 'reload',
                 trigger_type: triggerType,
                 trigger_duration: duration,
-                trigger_iterations: iterationsOptional ? iterations : 1,
                 category: category,
                 provider: provider,
                 brand: 'SYSTEM',
                 config_type: 'cash',
                 percentage: percentage,
                 wagering_multiplier: wageringMultiplier,
-                minimum_amount: Object.fromEntries(CURRENCIES.map(c => [c, minimumAmountEUR])),
-                minimum_stake_to_wager: selectedMinStakeTable,
-                maximum_stake_to_wager: selectedMaxStakeTable,
-                maximum_amount: selectedMaxAmountTable,
-                maximum_withdraw: selectedMaxWithdrawTable,
+                minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount'),
+                minimum_stake_to_wager: buildCurrencyMap(minStakeEUR, 'minimum_stake_to_wager'),
+                maximum_stake_to_wager: buildCurrencyMap(maxStakeEUR, 'maximum_stake_to_wager'),
+                maximum_amount: buildCurrencyMap(maxAmountEUR, 'maximum_amount'),
+                maximum_withdraw: maxWithdrawMap,
                 include_amount_on_target_wager: includeAmount,
                 cap_calculation_to_maximum: capCalculation,
                 compensate_overspending: true,
@@ -272,6 +288,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : null,
                 segments: segments.length > 0 ? segments : null,
                 notes: notes || undefined,
+                ...(iterations > 0 && { trigger_iterations: iterations }),
                 ...(withSchedule && scheduleFrom && scheduleTo && {
                     schedule_from: formatDateTimeForPayload(scheduleFrom),
                     schedule_to: formatDateTimeForPayload(scheduleTo),
@@ -280,8 +297,8 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 config_extra: {
                     category: category,
                     proportions_type: proportionsType,
-                    ...(proportionsType === 'casino' && selectedCasinoProportionsTable && { proportions: selectedCasinoProportionsTable }),
-                    ...(proportionsType === 'live_casino' && selectedLiveCasinoProportionsTable && { proportions: selectedLiveCasinoProportionsTable }),
+                    ...(proportionsType === 'casino' && { proportions: buildCurrencyMap(casinoProportionsEUR, 'casino_proportions') }),
+                    ...(proportionsType === 'live_casino' && { proportions: buildCurrencyMap(liveCasinoProportionsEUR, 'live_casino_proportions') }),
                 },
                 expiry: expiry,
             };
@@ -466,6 +483,17 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                             </div>
 
                             <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Iterations (Optional)</label>
+                                <input
+                                    type="number"
+                                    value={iterations}
+                                    onChange={(e) => setIterations(parseInt(e.target.value) || 0)}
+                                    placeholder="Leave empty or 0 if not needed"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
                                 <select
                                     value={triggerType}
@@ -487,26 +515,6 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                                     placeholder="e.g., 7d"
                                     className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
-                            </div>
-
-                            <div>
-                                <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={iterationsOptional}
-                                        onChange={(e) => setIterationsOptional(e.target.checked)}
-                                        className="mr-2 w-4 h-4"
-                                    />
-                                    Iterations (Optional)
-                                </label>
-                                {iterationsOptional && (
-                                    <input
-                                        type="number"
-                                        value={iterations}
-                                        onChange={(e) => setIterations(parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white mt-1"
-                                    />
-                                )}
                             </div>
                         </div>
                     </div>
@@ -539,87 +547,46 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Stake to Wager *</label>
-                                <select
-                                    value={selectedMinStakeTable ? JSON.stringify(selectedMinStakeTable) : ''}
-                                    onChange={(e) => {
-                                        if (e.target.value && adminConfig?.minimum_stake_to_wager) {
-                                            const table = adminConfig.minimum_stake_to_wager.find(t => JSON.stringify(t.values) === e.target.value);
-                                            if (table) setSelectedMinStakeTable(table.values);
-                                        }
-                                    }}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                >
-                                    <option value="">Select table...</option>
-                                    {adminConfig?.minimum_stake_to_wager?.map(table => (
-                                        <option key={table.id} value={JSON.stringify(table.values)}>
-                                            €{table.values.EUR?.toFixed(2) || '0.00'}
-                                        </option>
-                                    ))}
-                                </select>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Stake to Wager (EUR) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={minStakeEUR}
+                                    onChange={(e) => setMinStakeEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 0.5"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Stake to Wager *</label>
-                                <select
-                                    value={selectedMaxStakeTable ? JSON.stringify(selectedMaxStakeTable) : ''}
-                                    onChange={(e) => {
-                                        if (e.target.value && adminConfig?.maximum_stake_to_wager) {
-                                            const table = adminConfig.maximum_stake_to_wager.find(t => JSON.stringify(t.values) === e.target.value);
-                                            if (table) setSelectedMaxStakeTable(table.values);
-                                        }
-                                    }}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                >
-                                    <option value="">Select table...</option>
-                                    {adminConfig?.maximum_stake_to_wager?.map(table => (
-                                        <option key={table.id} value={JSON.stringify(table.values)}>
-                                            €{table.values.EUR?.toFixed(2) || '0.00'}
-                                        </option>
-                                    ))}
-                                </select>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Stake to Wager (EUR) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={maxStakeEUR}
+                                    onChange={(e) => setMaxStakeEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 5"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Amount *</label>
-                                <select
-                                    value={selectedMaxAmountTable ? JSON.stringify(selectedMaxAmountTable) : ''}
-                                    onChange={(e) => {
-                                        if (e.target.value && adminConfig?.maximum_amount) {
-                                            const table = adminConfig.maximum_amount.find(t => JSON.stringify(t.values) === e.target.value);
-                                            if (table) setSelectedMaxAmountTable(table.values);
-                                        }
-                                    }}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                >
-                                    <option value="">Select table...</option>
-                                    {adminConfig?.maximum_amount?.map(table => (
-                                        <option key={table.id} value={JSON.stringify(table.values)}>
-                                            €{table.values.EUR?.toFixed(2) || '0.00'}
-                                        </option>
-                                    ))}
-                                </select>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Amount (EUR) *</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={maxAmountEUR}
+                                    onChange={(e) => setMaxAmountEUR(parseFloat(e.target.value))}
+                                    placeholder="e.g., 100"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Withdraw *</label>
-                                <select
-                                    value={selectedMaxWithdrawTable ? JSON.stringify(selectedMaxWithdrawTable) : ''}
-                                    onChange={(e) => {
-                                        if (e.target.value && adminConfig?.maximum_withdraw) {
-                                            const table = adminConfig.maximum_withdraw.find(t => JSON.stringify(t.values) === e.target.value);
-                                            if (table) setSelectedMaxWithdrawTable(table.values);
-                                        }
-                                    }}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                >
-                                    <option value="">Select table...</option>
-                                    {adminConfig?.maximum_withdraw?.map(table => (
-                                        <option key={table.id} value={JSON.stringify(table.values)}>
-                                            €{table.values.EUR?.toFixed(2) || '0.00'}
-                                        </option>
-                                    ))}
-                                </select>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Withdraw</label>
+                                <div className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-800/60">
+                                    EUR: {getMaxWithdrawMultiplier(percentage)}
+                                </div>
                             </div>
 
                             <div>
@@ -636,10 +603,10 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                             </div>
                         </div>
 
-                        {/* Proportions Section - Radio Buttons Only */}
-                        <div className="p-3 bg-slate-700/30 rounded border border-green-500/30">
-                            <label className="block text-sm font-semibold text-slate-100 mb-3">Proportions *</label>
-                            <div className="flex gap-4">
+                        {/* Proportions Section - Radio Buttons + EUR Input */}
+                        <div className="p-3 bg-slate-700/30 rounded border border-red-500/50">
+                            <label className="block text-sm font-semibold text-slate-100 mb-3">🚫 Proportions *</label>
+                            <div className="flex gap-4 mb-3">
                                 <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
                                     <input
                                         type="radio"
@@ -658,6 +625,25 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                                     />
                                     🎭 Live Casino Proportions
                                 </label>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">
+                                    {proportionsType === 'casino' ? 'Casino' : 'Live Casino'} Proportions (EUR) *
+                                </label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={proportionsType === 'casino' ? casinoProportionsEUR : liveCasinoProportionsEUR}
+                                    onChange={(e) => {
+                                        if (proportionsType === 'casino') {
+                                            setCasinoProportionsEUR(parseFloat(e.target.value));
+                                        } else {
+                                            setLiveCasinoProportionsEUR(parseFloat(e.target.value));
+                                        }
+                                    }}
+                                    placeholder="e.g., 100"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
                             </div>
                         </div>
 

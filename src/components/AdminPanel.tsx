@@ -65,6 +65,7 @@ export default function AdminPanel() {
     const [loading, setLoading] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [importData, setImportData] = useState('');
+    const [importTargetField, setImportTargetField] = useState<string>('');
     const [addingCurrency, setAddingCurrency] = useState<{ field: string; tableId: string } | null>(null);
     const [newCurrencyName, setNewCurrencyName] = useState('');
     const [newCurrencyValue, setNewCurrencyValue] = useState<number>(0);
@@ -249,48 +250,152 @@ export default function AdminPanel() {
     };
 
 
-    const handleBulkImport = () => {
+    const handleBulkImport = async () => {
         try {
-            const lines = importData.trim().split('\n');
+            const lines = importData.trim().split('\n').filter(line => line.trim());
             if (lines.length < 2) {
                 setMessage('❌ Invalid format: need at least headers and 1 data row');
                 return;
             }
 
-            const currencyHeaders = lines[0].split('\t').map(c => c.trim()).filter(c => c);
-            const newTables: CurrencyTable[] = [];
+            // Detect format by checking if first line is currencies or currency-value pairs
+            const firstLineTabbed = lines[0].split('\t').length > 1;
+            const firstLineVertical = /^[A-Z]{3}\s+\d/.test(lines[0]);
 
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split('\t').map(v => v.trim()).filter(v => v);
-                if (values.length === 0) continue;
+            let newTables: CurrencyTable[] = [];
 
+            if (firstLineVertical || (!firstLineTabbed && /^[A-Z]{3}\s+\d/.test(lines[0]))) {
+                // VERTICAL FORMAT: Currency on left, value on right
+                // EUR	25
+                // USD	25
+                // CAD	25
                 const tableData: Record<string, number> = {};
-                currencyHeaders.forEach((currency, idx) => {
-                    tableData[currency] = parseFloat(values[idx]) || 0;
-                });
+
+                for (let i = 0; i < lines.length; i++) {
+                    const parts = lines[i].split(/\s+/).filter(p => p.trim());
+                    if (parts.length >= 2) {
+                        const currency = parts[0].trim().toUpperCase();
+                        const value = parseFloat(parts[1].replace(/[.,]/g, '')) || 0;
+
+                        // Validate it's a 3-letter currency code
+                        if (/^[A-Z]{3}$/.test(currency)) {
+                            tableData[currency] = value;
+                        }
+                    }
+                }
+
+                if (Object.keys(tableData).length === 0) {
+                    setMessage('❌ No valid currency-value pairs found in vertical format');
+                    return;
+                }
 
                 newTables.push({
-                    id: String(i),
-                    name: `Table ${i}`,
+                    id: '1',
+                    name: 'Table 1',
                     values: tableData
                 });
+            } else {
+                // HORIZONTAL FORMAT: Currencies as headers (original format)
+                // EUR	USD	GBP	...
+                // 0.10	0.10	0.10	...
+                // 0.20	0.20	0.20	...
+                const currencyHeaders = lines[0].split('\t').map(c => c.trim().toUpperCase()).filter(c => /^[A-Z]{3}$/.test(c));
+
+                if (currencyHeaders.length === 0) {
+                    setMessage('❌ No valid currency headers found (expected 3-letter codes like EUR, USD, GBP)');
+                    return;
+                }
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split('\t').map(v => v.trim()).filter(v => v);
+                    if (values.length === 0) continue;
+
+                    const tableData: Record<string, number> = {};
+                    currencyHeaders.forEach((currency, idx) => {
+                        const value = parseFloat(values[idx]?.replace(/[.,]/g, '')) || 0;
+                        tableData[currency] = value;
+                    });
+
+                    newTables.push({
+                        id: String(i),
+                        name: `Table ${i}`,
+                        values: tableData
+                    });
+                }
+
+                if (newTables.length === 0) {
+                    setMessage('❌ No valid data rows found');
+                    return;
+                }
             }
 
-            if (newTables.length === 0) {
-                setMessage('❌ No valid data rows found');
-                return;
+            // Determine which field to update based on active tab and user selection
+            let targetField = importTargetField || 'cost';
+            if (!importTargetField) {
+                // Fallback to old logic if no specific field selected
+                if (activeTab === 'amounts') {
+                    targetField = 'minimum_amount';
+                } else if (activeTab === 'stakes') {
+                    targetField = 'minimum_stake_to_wager';
+                } else if (activeTab === 'withdrawals') {
+                    targetField = 'maximum_withdraw';
+                } else if (activeTab === 'wager') {
+                    targetField = 'minimum_stake_to_wager';
+                }
             }
 
-            setConfig(prev => ({
-                ...prev,
-                cost: newTables,
-            }));
+            // Update state
+            const updatedConfig = {
+                ...config,
+                [targetField]: newTables,
+            };
+            setConfig(updatedConfig);
 
-            setMessage(`✅ Imported ${newTables.length} pricing tables!`);
+            // Save to backend immediately
+            setLoading(true);
+            const payload: any = {
+                provider: config.provider,
+                casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions,
+                live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
+            };
+
+            // Only include the field being imported
+            if (targetField === 'cost') {
+                payload.cost = newTables;
+            } else if (targetField === 'minimum_amount') {
+                payload.minimum_amount = newTables;
+            } else if (targetField === 'maximum_amount') {
+                payload.maximum_amount = newTables;
+            } else if (targetField === 'minimum_stake_to_wager') {
+                payload.minimum_stake_to_wager = newTables;
+            } else if (targetField === 'maximum_stake_to_wager') {
+                payload.maximum_stake_to_wager = newTables;
+            } else if (targetField === 'maximum_withdraw') {
+                payload.maximum_withdraw = newTables;
+            }
+
+            // Add empty arrays for other fields
+            if (targetField !== 'cost') payload.cost = [];
+            if (targetField !== 'minimum_amount' && targetField !== 'maximum_amount') {
+                payload.minimum_amount = [];
+                payload.maximum_amount = [];
+            }
+            if (targetField !== 'minimum_stake_to_wager' && targetField !== 'maximum_stake_to_wager') {
+                payload.minimum_stake_to_wager = [];
+                payload.maximum_stake_to_wager = [];
+            }
+            if (targetField !== 'maximum_withdraw') payload.maximum_withdraw = [];
+
+            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config?tab=${activeTab}`, payload);
+
+            setMessage(`✅ Imported and saved ${newTables.length} pricing table(s) to ${targetField}!`);
             setShowImportModal(false);
             setImportData('');
+            setImportTargetField('');
+            setLoading(false);
         } catch (error: any) {
             setMessage(`❌ Import error: ${error.message}`);
+            setLoading(false);
         }
     };
 
@@ -331,15 +436,13 @@ export default function AdminPanel() {
                                         <h4 className="font-semibold text-white text-sm mb-1">{table.name}</h4>
                                         <div className="text-2xl font-bold text-cyan-400">€{eurValue.toFixed(2)}</div>
                                     </div>
-                                    {tables.length > 1 && (
-                                        <button
-                                            onClick={() => handleRemoveTable(field, table.id)}
-                                            className="p-1 hover:bg-red-600/20 rounded text-red-400 hover:text-red-300 transition-colors"
-                                            title="Delete table"
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => handleRemoveTable(field, table.id)}
+                                        className="p-1 hover:bg-red-600/20 rounded text-red-400 hover:text-red-300 transition-colors"
+                                        title="Delete table"
+                                    >
+                                        ✕
+                                    </button>
                                 </div>
 
                                 {/* Currency List */}
@@ -451,7 +554,7 @@ export default function AdminPanel() {
 
                 {/* Header Section */}
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-white mb-2">Configuration Center</h1>
+                    <h1 className="text-4xl font-bold text-white mb-2">⚙️ Configuration Center</h1>
                     <p className="text-slate-400">Manage pricing tables and currency configurations</p>
                 </div>
 
@@ -463,9 +566,9 @@ export default function AdminPanel() {
                             { id: 'cost', label: 'Cost', icon: '💰' },
                             { id: 'amounts', label: 'Amounts', icon: '💵' },
                             { id: 'stakes', label: 'Stakes', icon: '🎯' },
-                            { id: 'withdrawals', label: 'Withdrawals (cap)', icon: '🏦' },
+                            { id: 'withdrawals', label: 'Withdrawals (cap/multiplier)', icon: '🏦' },
                             { id: 'wager', label: 'Max/Min to Wager', icon: '🎰' },
-                            { id: 'proportions', label: 'Proportions', icon: '📊' },
+                            { id: 'proportions', label: 'Proportions', icon: '🚫' },
                         ].map(({ id, label, icon }) => (
                             <button
                                 key={id}
@@ -521,8 +624,8 @@ export default function AdminPanel() {
                             )}
                             {activeTab === 'amounts' && (
                                 <div className="space-y-8">
-                                    {renderSettingTable('minimum_amount', 'Minimum Bonus Amount', 'Smallest bonus value per currency')}
-                                    {renderSettingTable('maximum_amount', 'Maximum Bonus Amount', 'Largest bonus value per currency')}
+                                    {renderSettingTable('minimum_amount', 'Minimum Deposit Amount', 'Minimum deposit amount required per currency')}
+                                    {renderSettingTable('maximum_amount', 'Maximum Deposit Amount', 'Maximum deposit amount allowed per currency')}
                                 </div>
                             )}
                             {activeTab === 'stakes' && (
@@ -541,8 +644,8 @@ export default function AdminPanel() {
                             {activeTab === 'proportions' && (
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-6">
-                                        <div className="p-4 bg-slate-800/40 border border-slate-700 rounded-lg">
-                                            <h4 className="text-sm font-semibold text-slate-300 mb-3">🎰 Casino Proportions</h4>
+                                        <div className="p-4 bg-slate-800/40 border border-red-500/50 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-slate-300 mb-3">🚫 Casino Proportions</h4>
                                             <p className="text-xs text-slate-400 mb-3">Enter bet distribution for casino games</p>
                                             <textarea
                                                 value={selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions}
@@ -559,8 +662,8 @@ export default function AdminPanel() {
                                             />
                                         </div>
 
-                                        <div className="p-4 bg-slate-800/40 border border-slate-700 rounded-lg">
-                                            <h4 className="text-sm font-semibold text-slate-300 mb-3">🎭 Live Casino Proportions</h4>
+                                        <div className="p-4 bg-slate-800/40 border border-red-500/50 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-slate-300 mb-3">🚫 Live Casino Proportions</h4>
                                             <p className="text-xs text-slate-400 mb-3">Enter bet distribution for live casino games</p>
                                             <textarea
                                                 value={selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions}
@@ -597,16 +700,18 @@ export default function AdminPanel() {
 
                 {/* Action Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                    <button
-                        onClick={() => setShowImportModal(true)}
-                        className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-200"
-                    >
-                        📥 Import Custom Data
-                    </button>
+                    {activeTab !== 'proportions' && (
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-200"
+                        >
+                            📥 Import Custom Data
+                        </button>
+                    )}
                     <button
                         onClick={handleSave}
                         disabled={loading}
-                        className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+                        className={`py-3 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${activeTab === 'proportions' ? 'col-span-2' : ''}`}
                     >
                         {loading ? '⏳ Saving...' : '✓ Save Configuration'}
                     </button>
@@ -615,29 +720,78 @@ export default function AdminPanel() {
                 {/* Import Modal */}
                 {showImportModal && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto p-6">
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-auto p-6">
                             <h3 className="text-xl font-bold text-white mb-4">📥 Import Pricing Data</h3>
 
-                            <div className="mb-4">
-                                <p className="text-sm text-slate-400 mb-3">Paste tab-separated data with currencies as headers:</p>
-                                <div className="bg-slate-900/50 border border-slate-700 rounded p-3 text-xs font-mono text-slate-300 mb-3 max-h-32 overflow-auto">
-                                    <div>EUR&nbsp;&nbsp;&nbsp;&nbsp;USD&nbsp;&nbsp;&nbsp;&nbsp;GBP&nbsp;&nbsp;&nbsp;&nbsp;...</div>
-                                    <div>0.10&nbsp;&nbsp;&nbsp;&nbsp;0.10&nbsp;&nbsp;&nbsp;&nbsp;0.10&nbsp;&nbsp;&nbsp;&nbsp;...</div>
-                                    <div>0.20&nbsp;&nbsp;&nbsp;&nbsp;0.20&nbsp;&nbsp;&nbsp;&nbsp;0.20&nbsp;&nbsp;&nbsp;&nbsp;...</div>
+                            {/* Field Selection Dropdown */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">📂 Import to which field?</label>
+                                <select
+                                    value={importTargetField}
+                                    onChange={(e) => setImportTargetField(e.target.value)}
+                                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-cyan-500 focus:outline-none"
+                                >
+                                    <option value="">-- Select Target Field --</option>
+                                    {activeTab === 'cost' && <option value="cost">Cost</option>}
+                                    {activeTab === 'amounts' && (
+                                        <>
+                                            <option value="minimum_amount">Minimum Amount</option>
+                                            <option value="maximum_amount">Maximum Amount</option>
+                                        </>
+                                    )}
+                                    {activeTab === 'stakes' && (
+                                        <>
+                                            <option value="minimum_stake_to_wager">Minimum Stake to Wager</option>
+                                            <option value="maximum_stake_to_wager">Maximum Stake to Wager</option>
+                                        </>
+                                    )}
+                                    {activeTab === 'withdrawals' && <option value="maximum_withdraw">Maximum Withdraw</option>}
+                                    {activeTab === 'wager' && (
+                                        <>
+                                            <option value="minimum_stake_to_wager">Minimum Stake to Wager</option>
+                                            <option value="maximum_stake_to_wager">Maximum Stake to Wager</option>
+                                        </>
+                                    )}
+                                </select>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-300 mb-2">📊 Format 1: Horizontal (Default)</p>
+                                    <p className="text-xs text-slate-400 mb-2">Currencies as headers, values in rows (tab-separated):</p>
+                                    <div className="bg-slate-900/50 border border-slate-700 rounded p-3 text-xs font-mono text-slate-300 mb-3 max-h-24 overflow-auto">
+                                        <div>EUR&nbsp;&nbsp;&nbsp;&nbsp;USD&nbsp;&nbsp;&nbsp;&nbsp;GBP&nbsp;&nbsp;&nbsp;&nbsp;CAD</div>
+                                        <div>0.10&nbsp;&nbsp;&nbsp;&nbsp;0.10&nbsp;&nbsp;&nbsp;&nbsp;0.10&nbsp;&nbsp;&nbsp;&nbsp;0.12</div>
+                                        <div>0.20&nbsp;&nbsp;&nbsp;&nbsp;0.20&nbsp;&nbsp;&nbsp;&nbsp;0.20&nbsp;&nbsp;&nbsp;&nbsp;0.24</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-300 mb-2">📋 Format 2: Vertical</p>
+                                    <p className="text-xs text-slate-400 mb-2">Currency and value per line (space or tab-separated):</p>
+                                    <div className="bg-slate-900/50 border border-slate-700 rounded p-3 text-xs font-mono text-slate-300 mb-3 max-h-32 overflow-auto">
+                                        <div>EUR&nbsp;&nbsp;&nbsp;&nbsp;25</div>
+                                        <div>USD&nbsp;&nbsp;&nbsp;&nbsp;25</div>
+                                        <div>GBP&nbsp;&nbsp;&nbsp;&nbsp;20</div>
+                                        <div>CAD&nbsp;&nbsp;&nbsp;&nbsp;30</div>
+                                        <div>NOK&nbsp;&nbsp;&nbsp;&nbsp;250</div>
+                                        <div>JPY&nbsp;&nbsp;&nbsp;&nbsp;3750</div>
+                                    </div>
                                 </div>
                             </div>
 
                             <textarea
                                 value={importData}
                                 onChange={(e) => setImportData(e.target.value)}
-                                placeholder="Paste tab-separated data here..."
-                                className="w-full h-48 px-4 py-3 bg-slate-700 border border-slate-600 rounded text-white text-sm font-mono focus:border-cyan-500 focus:outline-none mb-4"
+                                placeholder="Paste data here... Supports both horizontal and vertical formats"
+                                className="w-full h-56 px-4 py-3 bg-slate-700 border border-slate-600 rounded text-white text-sm font-mono focus:border-cyan-500 focus:outline-none mb-4 mt-4"
                             />
 
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleBulkImport}
-                                    className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-all"
+                                    disabled={!importTargetField || !importData.trim()}
+                                    className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
                                 >
                                     ✓ Import
                                 </button>
@@ -645,6 +799,7 @@ export default function AdminPanel() {
                                     onClick={() => {
                                         setShowImportModal(false);
                                         setImportData('');
+                                        setImportTargetField('');
                                     }}
                                     className="flex-1 py-2 px-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-all"
                                 >
