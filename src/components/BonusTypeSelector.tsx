@@ -29,7 +29,7 @@ export default function BonusTypeSelector({ onBonusSaved }: { onBonusSaved?: () 
                     className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 font-medium appearance-none cursor-pointer"
                 >
                     <option value="free_spins" className="bg-slate-800">🎟️ Award Free Spins</option>
-                    <option value="reload" className="bg-slate-800">🔄 Reload Bonus</option>
+                    <option value="reload" className="bg-slate-800">🔄 Casino Reload Bonus</option>
                     <option value="cashback" className="bg-slate-800">💰 Cashback Bonus</option>
                 </select>
             </div>

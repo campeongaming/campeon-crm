@@ -26,7 +26,7 @@ interface StableConfigWithVariations {
 
 export default function AdminPanel() {
     const [selectedProvider, setSelectedProvider] = useState('PRAGMATIC');
-    const [activeTab, setActiveTab] = useState<'cost' | 'amounts' | 'stakes' | 'withdrawals' | 'wager' | 'proportions'>('cost');
+    const [activeTab, setActiveTab] = useState<'cost' | 'amounts' | 'withdrawals' | 'wager' | 'proportions'>('cost');
     const [loadingData, setLoadingData] = useState(false);
 
     // Text-based proportions state
@@ -168,11 +168,11 @@ export default function AdminPanel() {
         const newTable: CurrencyTable = {
             id: newId,
             name: `Table ${newId}`,
-            values: Object.fromEntries(CURRENCIES.map(c => [c, 0.25]))
+            values: Object.fromEntries(CURRENCIES.map(c => [c, 0])) // All currencies with 0 as empty placeholder
         };
         setConfig(prev => ({
             ...prev,
-            [field]: [...(prev[field as keyof StableConfigWithVariations] as CurrencyTable[]), newTable]
+            [field]: [...(prev[field as keyof StableConfigWithVariations] as CurrencyTable[]), newTable] // Append to end
         }));
     };
 
@@ -198,9 +198,6 @@ export default function AdminPanel() {
             } else if (activeTab === 'amounts') {
                 payload.minimum_amount = config.minimum_amount;
                 payload.maximum_amount = config.maximum_amount;
-            } else if (activeTab === 'stakes') {
-                payload.minimum_stake_to_wager = config.minimum_stake_to_wager;
-                payload.maximum_stake_to_wager = config.maximum_stake_to_wager;
             } else if (activeTab === 'withdrawals') {
                 payload.maximum_withdraw = config.maximum_withdraw;
             } else if (activeTab === 'wager') {
@@ -216,7 +213,7 @@ export default function AdminPanel() {
                 payload.minimum_amount = [];
                 payload.maximum_amount = [];
             }
-            if (activeTab !== 'stakes' && activeTab !== 'wager') {
+            if (activeTab !== 'wager') {
                 payload.minimum_stake_to_wager = [];
                 payload.maximum_stake_to_wager = [];
             }
@@ -230,8 +227,6 @@ export default function AdminPanel() {
                 successMessage = `✅ ${selectedProvider} cost tables saved successfully!`;
             } else if (activeTab === 'amounts') {
                 successMessage = '✅ Minimum & maximum bonus amounts saved successfully!';
-            } else if (activeTab === 'stakes') {
-                successMessage = '✅ Minimum & maximum stake values saved successfully!';
             } else if (activeTab === 'withdrawals') {
                 successMessage = '✅ Maximum withdrawal amounts saved successfully!';
             } else if (activeTab === 'wager') {
@@ -275,7 +270,8 @@ export default function AdminPanel() {
                     const parts = lines[i].split(/\s+/).filter(p => p.trim());
                     if (parts.length >= 2) {
                         const currency = parts[0].trim().toUpperCase();
-                        const value = parseFloat(parts[1].replace(/[.,]/g, '')) || 0;
+                        // Keep decimal point, only remove thousand separators (commas)
+                        const value = parseFloat(parts[1].replace(/,/g, '')) || 0;
 
                         // Validate it's a 3-letter currency code
                         if (/^[A-Z]{3}$/.test(currency)) {
@@ -312,7 +308,8 @@ export default function AdminPanel() {
 
                     const tableData: Record<string, number> = {};
                     currencyHeaders.forEach((currency, idx) => {
-                        const value = parseFloat(values[idx]?.replace(/[.,]/g, '')) || 0;
+                        // Keep decimal point, only remove thousand separators (commas)
+                        const value = parseFloat(values[idx]?.replace(/,/g, '')) || 0;
                         tableData[currency] = value;
                     });
 
@@ -335,8 +332,6 @@ export default function AdminPanel() {
                 // Fallback to old logic if no specific field selected
                 if (activeTab === 'amounts') {
                     targetField = 'minimum_amount';
-                } else if (activeTab === 'stakes') {
-                    targetField = 'minimum_stake_to_wager';
                 } else if (activeTab === 'withdrawals') {
                     targetField = 'maximum_withdraw';
                 } else if (activeTab === 'wager') {
@@ -401,7 +396,8 @@ export default function AdminPanel() {
 
     const renderSettingTable = (field: string, title: string, description: string) => {
         let tables = (config[field as keyof StableConfigWithVariations] as CurrencyTable[]);
-        tables = [...tables].sort((a, b) => (a.values['EUR'] || 0) - (b.values['EUR'] || 0));
+        // Sort by ID ascending (Table 1, Table 2, Table 3, etc. from left to right)
+        tables = [...tables].sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
         return (
             <div>
@@ -448,21 +444,27 @@ export default function AdminPanel() {
                                 {/* Currency List */}
                                 <div className="space-y-2 mb-4">
                                     {usedCurrencies.map((currency) => (
-                                        <div key={currency} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ width: '52px', textAlign: 'left' }} className="text-slate-400 text-xs font-medium uppercase">{currency}</span>
+                                        <div key={currency} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ width: '48px', textAlign: 'left' }} className="text-slate-400 text-sm font-semibold uppercase">{currency}</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
+                                                min="0"
                                                 value={table.values[currency] || ''}
                                                 onChange={(e) => handleCurrencyChange(field, table.id, currency, parseFloat(e.target.value) || 0)}
-                                                style={{ width: '70px' }}
-                                                className="bg-slate-700 text-white text-xs px-2.5 py-1.5 rounded border border-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all text-right"
-                                                placeholder="0"
+                                                style={{
+                                                    width: '110px',
+                                                    MozAppearance: 'textfield',
+                                                    WebkitAppearance: 'none',
+                                                    appearance: 'none'
+                                                }}
+                                                className="bg-slate-700/80 text-white text-sm font-medium px-3 py-2 rounded-lg border-2 border-slate-600 hover:border-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 transition-all text-right shadow-sm [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0"
+                                                placeholder="0.00"
                                             />
                                             <button
                                                 onClick={() => handleRemoveCurrency(field, table.id, currency)}
-                                                style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                className="hover:bg-red-600/20 rounded text-slate-500 hover:text-red-400 transition-colors text-sm flex-shrink-0"
+                                                style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                className="hover:bg-red-600/20 rounded-lg text-slate-500 hover:text-red-400 transition-all text-base flex-shrink-0 font-bold"
                                                 title="Remove currency"
                                             >
                                                 ✕
@@ -561,12 +563,11 @@ export default function AdminPanel() {
                 {/* Configuration Tabs - Card Grid */}
                 <div className="mb-8">
                     <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Select Configuration</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                         {[
                             { id: 'cost', label: 'Cost', icon: '💰' },
                             { id: 'amounts', label: 'Amounts', icon: '💵' },
-                            { id: 'stakes', label: 'Stakes', icon: '🎯' },
-                            { id: 'withdrawals', label: 'Withdrawals (cap/multiplier)', icon: '🏦' },
+                            { id: 'withdrawals', label: 'Withdrawals (cap)', icon: '🏦' },
                             { id: 'wager', label: 'Max/Min to Wager', icon: '🎰' },
                             { id: 'proportions', label: 'Proportions', icon: '🚫' },
                         ].map(({ id, label, icon }) => (
@@ -626,12 +627,6 @@ export default function AdminPanel() {
                                 <div className="space-y-8">
                                     {renderSettingTable('minimum_amount', 'Minimum Deposit Amount', 'Minimum deposit amount required per currency')}
                                     {renderSettingTable('maximum_amount', 'Maximum Deposit Amount', 'Maximum deposit amount allowed per currency')}
-                                </div>
-                            )}
-                            {activeTab === 'stakes' && (
-                                <div className="space-y-8">
-                                    {renderSettingTable('minimum_stake_to_wager', 'Minimum Stake', 'Smallest bet amount players must place')}
-                                    {renderSettingTable('maximum_stake_to_wager', 'Maximum Stake', 'Largest bet amount allowed per round')}
                                 </div>
                             )}
                             {activeTab === 'withdrawals' && renderSettingTable('maximum_withdraw', 'Maximum Withdrawal', 'Maximum amount players can withdraw from bonus winnings')}
@@ -737,12 +732,6 @@ export default function AdminPanel() {
                                         <>
                                             <option value="minimum_amount">Minimum Amount</option>
                                             <option value="maximum_amount">Maximum Amount</option>
-                                        </>
-                                    )}
-                                    {activeTab === 'stakes' && (
-                                        <>
-                                            <option value="minimum_stake_to_wager">Minimum Stake to Wager</option>
-                                            <option value="maximum_stake_to_wager">Maximum Stake to Wager</option>
                                         </>
                                     )}
                                     {activeTab === 'withdrawals' && <option value="maximum_withdraw">Maximum Withdraw</option>}

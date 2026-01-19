@@ -32,7 +32,6 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     const [gameId, setGameId] = useState('');
 
     // Schedule (optional)
-    const [withSchedule, setWithSchedule] = useState(false);
     const [scheduleFrom, setScheduleFrom] = useState('');
     const [scheduleTo, setScheduleTo] = useState('');
 
@@ -42,7 +41,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
     // Trigger section
     const [minimumAmountEUR, setMinimumAmountEUR] = useState(25);
-    const [iterations, setIterations] = useState(0);
+    const [iterations, setIterations] = useState<number | ''>('');
     const [triggerType, setTriggerType] = useState('deposit');
     const [duration, setDuration] = useState('7d');
     const [restrictedCountries, setRestrictedCountries] = useState<string[]>([]);
@@ -60,6 +59,8 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     // EUR values for searching admin config tables
     const [minStakeEUR, setMinStakeEUR] = useState(0.5);
     const [maxStakeEUR, setMaxStakeEUR] = useState(5);
+    const [selectedMinStakeTable, setSelectedMinStakeTable] = useState('');
+    const [selectedMaxStakeTable, setSelectedMaxStakeTable] = useState('');
     const [maxAmountEUR, setMaxAmountEUR] = useState(100);
     const [casinoProportionsEUR, setCasinoProportionsEUR] = useState(100);
     const [liveCasinoProportionsEUR, setLiveCasinoProportionsEUR] = useState(100);
@@ -150,6 +151,27 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
         if (percentage >= 100) return 10;
         if (percentage >= 25) return 12;
         return 12; // default fallback
+    };
+
+    // Handle stake table selection
+    const handleMinStakeTableChange = (tableId: string) => {
+        setSelectedMinStakeTable(tableId);
+        if (adminConfig && adminConfig.minimum_stake_to_wager) {
+            const table = adminConfig.minimum_stake_to_wager.find(t => t.id === tableId);
+            if (table && table.values['EUR']) {
+                setMinStakeEUR(table.values['EUR']);
+            }
+        }
+    };
+
+    const handleMaxStakeTableChange = (tableId: string) => {
+        setSelectedMaxStakeTable(tableId);
+        if (adminConfig && adminConfig.maximum_stake_to_wager) {
+            const table = adminConfig.maximum_stake_to_wager.find(t => t.id === tableId);
+            if (table && table.values['EUR']) {
+                setMaxStakeEUR(table.values['EUR']);
+            }
+        }
     };
 
     // ============ PARSE SEGMENTS FROM COMMA-SEPARATED INPUT ============
@@ -247,7 +269,10 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
         if (minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
         if (percentage <= 0) newErrors.push('Percentage must be > 0');
         if (wageringMultiplier <= 0) newErrors.push('Wagering multiplier must be > 0');
-        if (withSchedule && (!scheduleFrom || !scheduleTo)) newErrors.push('Both schedule dates required if enabled');
+        // Validate schedule only if one field is filled
+        if ((scheduleFrom && !scheduleTo) || (!scheduleFrom && scheduleTo)) {
+            newErrors.push('Both schedule dates required if using schedule');
+        }
 
         setErrors(newErrors);
         return newErrors.length === 0;
@@ -288,8 +313,8 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : null,
                 segments: segments.length > 0 ? segments : null,
                 notes: notes || undefined,
-                ...(iterations > 0 && { trigger_iterations: iterations }),
-                ...(withSchedule && scheduleFrom && scheduleTo && {
+                ...(iterations !== '' && iterations > 0 && { trigger_iterations: iterations }),
+                ...(scheduleFrom && scheduleTo && {
                     schedule_from: formatDateTimeForPayload(scheduleFrom),
                     schedule_to: formatDateTimeForPayload(scheduleTo),
                     schedule_type: 'period',
@@ -433,41 +458,29 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
                 {/* ============ SCHEDULE (OPTIONAL) ============ */}
                 <div className="p-4 bg-slate-700/40 rounded-lg border border-purple-500/40">
-                    <h3 className="text-lg font-semibold text-slate-100 mb-4">📅 Schedule (Optional)</h3>
+                    <h3 className="text-lg font-semibold text-slate-100 mb-4">📅 Schedule (Optional - leave empty if not needed)</h3>
 
-                    <label className="flex items-center text-sm font-medium text-slate-100 mb-4 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={withSchedule}
-                            onChange={(e) => setWithSchedule(e.target.checked)}
-                            className="mr-2 w-4 h-4"
-                        />
-                        Enable time-boxed promo
-                    </label>
-
-                    {withSchedule && (
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">From</label>
-                                <input
-                                    type="datetime-local"
-                                    value={scheduleFrom}
-                                    onChange={(e) => setScheduleFrom(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">To</label>
-                                <input
-                                    type="datetime-local"
-                                    value={scheduleTo}
-                                    onChange={(e) => setScheduleTo(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                />
-                            </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-100 mb-1">From</label>
+                            <input
+                                type="datetime-local"
+                                value={scheduleFrom}
+                                onChange={(e) => setScheduleFrom(e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                            />
                         </div>
-                    )}
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-100 mb-1">To</label>
+                            <input
+                                type="datetime-local"
+                                value={scheduleTo}
+                                onChange={(e) => setScheduleTo(e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* ============ TRIGGER ============ */}
@@ -491,8 +504,8 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                                 <input
                                     type="number"
                                     value={iterations}
-                                    onChange={(e) => setIterations(parseInt(e.target.value) || 0)}
-                                    placeholder="Leave empty or 0 if not needed"
+                                    onChange={(e) => setIterations(e.target.value === '' ? '' : parseInt(e.target.value))}
+                                    placeholder="Leave empty if not needed"
                                     className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
                                 />
                             </div>
@@ -551,27 +564,41 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Stake to Wager (EUR) *</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={minStakeEUR}
-                                    onChange={(e) => setMinStakeEUR(parseFloat(e.target.value))}
-                                    placeholder="e.g., 0.5"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
-                                />
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Stake to Wager *</label>
+                                <select
+                                    value={selectedMinStakeTable}
+                                    onChange={(e) => handleMinStakeTableChange(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                >
+                                    <option value="">-- Select Table --</option>
+                                    {adminConfig?.minimum_stake_to_wager?.map(table => (
+                                        <option key={table.id} value={table.id}>
+                                            {table.name} (€{table.values['EUR'] || 0})
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedMinStakeTable && (
+                                    <p className="text-xs text-slate-400 mt-1">Selected: €{minStakeEUR}</p>
+                                )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Stake to Wager (EUR) *</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={maxStakeEUR}
-                                    onChange={(e) => setMaxStakeEUR(parseFloat(e.target.value))}
-                                    placeholder="e.g., 5"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
-                                />
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Stake to Wager *</label>
+                                <select
+                                    value={selectedMaxStakeTable}
+                                    onChange={(e) => handleMaxStakeTableChange(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                >
+                                    <option value="">-- Select Table --</option>
+                                    {adminConfig?.maximum_stake_to_wager?.map(table => (
+                                        <option key={table.id} value={table.id}>
+                                            {table.name} (€{table.values['EUR'] || 0})
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedMaxStakeTable && (
+                                    <p className="text-xs text-slate-400 mt-1">Selected: €{maxStakeEUR}</p>
+                                )}
                             </div>
 
                             <div>

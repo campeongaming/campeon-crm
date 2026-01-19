@@ -598,7 +598,7 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         json_output["trigger"]["minimumAmount"] = template.minimum_amount
 
     # 3) iterations, type, duration, restrictedCountries, segments
-    if template.trigger_iterations:
+    if template.trigger_iterations and template.trigger_iterations > 0:
         json_output["trigger"]["iterations"] = template.trigger_iterations
 
     json_output["trigger"]["type"] = template.trigger_type
@@ -662,6 +662,23 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     config_dict["type"] = template.bonus_type
     config_dict["category"] = template.category
     config_dict["maximumWithdraw"] = maximum_withdraw_formatted
+
+    # Add stake to wager fields if present and non-zero
+    if template.minimum_stake_to_wager:
+        # Check if any currency has a non-zero value
+        if isinstance(template.minimum_stake_to_wager, dict):
+            has_value = any(val > 0 for val in template.minimum_stake_to_wager.values(
+            ) if isinstance(val, (int, float)))
+            if has_value:
+                config_dict["minimumStakeToWager"] = template.minimum_stake_to_wager
+
+    if template.maximum_stake_to_wager:
+        # Check if any currency has a non-zero value
+        if isinstance(template.maximum_stake_to_wager, dict):
+            has_value = any(val > 0 for val in template.maximum_stake_to_wager.values(
+            ) if isinstance(val, (int, float)))
+            if has_value:
+                config_dict["maximumStakeToWager"] = template.maximum_stake_to_wager
 
     config_json = json_lib.dumps(config_dict, indent=2)
 
