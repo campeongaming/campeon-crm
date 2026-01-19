@@ -613,7 +613,7 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     # Add config section
     extra_data = {
         "category": template.category,
-        "game": template.bonus_type,
+        "game": template.game if template.game else template.bonus_type,
     }
 
     # Fetch proportions if needed
@@ -625,6 +625,10 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
                 config_extra_parsed = json_parser.loads(template.config_extra)
             else:
                 config_extra_parsed = template.config_extra
+
+            # Get game name from config_extra if it exists
+            if config_extra_parsed.get('game'):
+                extra_data["game"] = config_extra_parsed.get('game')
 
             proportions_type = config_extra_parsed.get('proportions_type')
 

@@ -322,8 +322,6 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 config_extra: {
                     category: category,
                     proportions_type: proportionsType,
-                    ...(proportionsType === 'casino' && { proportions: buildCurrencyMap(casinoProportionsEUR, 'casino_proportions') }),
-                    ...(proportionsType === 'live_casino' && { proportions: buildCurrencyMap(liveCasinoProportionsEUR, 'live_casino_proportions') }),
                 },
                 expiry: expiry,
             };
@@ -637,44 +635,29 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                         {/* Proportions Section - Radio Buttons + EUR Input */}
                         <div className="p-3 bg-slate-700/30 rounded border border-red-500/50">
                             <label className="block text-sm font-semibold text-slate-100 mb-3">🚫 Proportions *</label>
-                            <div className="flex gap-4 mb-3">
-                                <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        checked={proportionsType === 'casino'}
-                                        onChange={() => setProportionsType('casino')}
-                                        className="mr-2 w-4 h-4"
-                                    />
-                                    🎰 Casino Proportions
-                                </label>
-                                <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        checked={proportionsType === 'live_casino'}
-                                        onChange={() => setProportionsType('live_casino')}
-                                        className="mr-2 w-4 h-4"
-                                    />
-                                    🎭 Live Casino Proportions
-                                </label>
-                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">
-                                    {proportionsType === 'casino' ? 'Casino' : 'Live Casino'} Proportions (EUR) *
-                                </label>
-                                <input
-                                    type="number"
-                                    step="1"
-                                    value={proportionsType === 'casino' ? casinoProportionsEUR : liveCasinoProportionsEUR}
-                                    onChange={(e) => {
-                                        if (proportionsType === 'casino') {
-                                            setCasinoProportionsEUR(parseFloat(e.target.value));
-                                        } else {
-                                            setLiveCasinoProportionsEUR(parseFloat(e.target.value));
-                                        }
-                                    }}
-                                    placeholder="e.g., 100"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
-                                />
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Proportions Type</label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={proportionsType === 'casino'}
+                                            onChange={() => setProportionsType('casino')}
+                                            className="mr-2 w-4 h-4"
+                                        />
+                                        🎰 Casino
+                                    </label>
+                                    <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={proportionsType === 'live_casino'}
+                                            onChange={() => setProportionsType('live_casino')}
+                                            className="mr-2 w-4 h-4"
+                                        />
+                                        🎭 Live Casino
+                                    </label>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1">Proportions values come from Admin Setup</p>
                             </div>
                         </div>
 
