@@ -98,6 +98,11 @@ class BonusTemplate(Base):
     # Maximum bonus per currency
     maximum_amount = Column(JSON)  # {"*": 300, "EUR": 300, ...}
 
+    # Proportions (game-to-percentage mappings, only for cashback/reload)
+    # Structure: {"SPINOMENAL.1 Reel Egypt": 0, "ROULETTE": 20, ...}
+    # Optional, only for bonus types that need it
+    proportions = Column(JSON, nullable=True, default=None)
+
     # Withdrawal limits per currency (in units of bonus, e.g., 3 = 3x bonus)
     maximum_withdraw = Column(JSON)  # {"*": 3, "EUR": 3, ...}
 

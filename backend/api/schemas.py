@@ -68,6 +68,9 @@ class BonusTemplateCreate(BaseModel):
     maximum_amount: Optional[Dict[str, float]] = None
     maximum_withdraw: Optional[Dict[str, float]] = None
 
+    # Proportions (game-to-percentage mappings, optional for certain bonus types)
+    proportions: Optional[Dict[str, Any]] = None
+
     # Config - Flags
     include_amount_on_target_wager: bool = True
     cap_calculation_to_maximum: bool = False

@@ -16,10 +16,10 @@ interface NavigationProps {
 }
 
 export default function Navigation({ activeTab }: NavigationProps) {
-    const tabBase = 'px-6 py-3 text-sm md:text-base font-semibold rounded-xl transition focus:outline-none focus:ring-2 focus:ring-white/20 shadow-sm';
+    const tabBase = 'px-6 py-3 text-sm md:text-base font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-white/30 shadow-sm';
 
     return (
-        <div className="flex gap-3 mb-8 overflow-x-auto pb-3 border-b border-slate-700/60">
+        <div className="flex gap-3 mb-8 overflow-x-visible pb-4 pt-2 border-b border-slate-700/60">
             {tabs.map((t) => {
                 const isActive = activeTab === t.id;
                 return (
@@ -31,7 +31,7 @@ export default function Navigation({ activeTab }: NavigationProps) {
                             'whitespace-nowrap',
                             isActive
                                 ? `bg-gradient-to-r ${t.active} text-white shadow-lg ${t.glow}`
-                                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 hover:text-white',
+                                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700/80 hover:text-slate-50 hover:shadow-md',
                         ].join(' ')}
                     >
                         {t.label}

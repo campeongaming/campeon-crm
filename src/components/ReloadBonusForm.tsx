@@ -24,6 +24,7 @@ const SUPPORTED_LOCALES = ['en', 'de', 'fi', 'no', 'pt', 'fr', 'es', 'it', 'pl',
 
 export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { notes: string; setNotes: (value: string) => void; onBonusSaved?: () => void }) {
     // ============ STATE ============
+    const [bonusId, setBonusId] = useState('');
     const [provider, setProvider] = useState('SYSTEM');
     const [adminConfig, setAdminConfig] = useState<AdminConfig | null>(null);
     const [loadingAdmin, setLoadingAdmin] = useState(false);
@@ -34,13 +35,14 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     // Schedule (optional)
     const [scheduleFrom, setScheduleFrom] = useState('');
     const [scheduleTo, setScheduleTo] = useState('');
+    const [scheduleTimezone, setScheduleTimezone] = useState('');
 
     // Segments (optional)
     const [segments, setSegments] = useState<string[]>([]);
     const [segmentInput, setSegmentInput] = useState('');
 
     // Trigger section
-    const [minimumAmountEUR, setMinimumAmountEUR] = useState(25);
+    const [minimumAmountEUR, setMinimumAmountEUR] = useState<number | ''>('');
     const [iterations, setIterations] = useState<number | ''>('');
     const [triggerType, setTriggerType] = useState('deposit');
     const [duration, setDuration] = useState('7d');
@@ -48,6 +50,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     const [countryInput, setCountryInput] = useState('');
 
     // Config section
+    const [configType, setConfigType] = useState('deposit');
     const [percentage, setPercentage] = useState(150);
     const [wageringMultiplier, setWageringMultiplier] = useState(20);
     const [category, setCategory] = useState('games');
@@ -111,16 +114,38 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     ): Record<string, number> => {
         const tolerance = 0.001;
 
-        // 🎯 For minimum_amount field, search admin config tables
+        // 🎯 For minimum_amount field, use deposit multipliers: multiply EUR value by each currency multiplier
         if (fieldName === 'minimum_amount' && adminConfig && adminConfig.minimum_amount) {
-            for (const table of adminConfig.minimum_amount) {
-                if (table.values && Math.abs(table.values.EUR - eurValue) < tolerance) {
-                    console.log('✅ Found matching minimum_amount table for EUR =', eurValue, ':', table.values);
-                    // "*" is ALWAYS the EUR value
-                    return { '*': table.values.EUR, ...table.values };
+            if (adminConfig.minimum_amount.length > 0) {
+                const multiplierTable = adminConfig.minimum_amount[0]; // Get first (and typically only) multiplier table
+                if (multiplierTable.values) {
+                    const result: Record<string, number> = { '*': eurValue }; // EUR as fallback
+                    CURRENCIES.forEach(curr => {
+                        const multiplier = multiplierTable.values[curr] || 1;
+                        result[curr] = parseFloat((eurValue * multiplier).toFixed(4));
+                    });
+                    console.log('✅ Applied deposit multipliers:', result);
+                    return result;
                 }
             }
-            console.warn('⚠️ No exact minimum_amount table found for EUR =', eurValue, '- using defaults');
+            console.warn('⚠️ No deposit multiplier table found - using EUR value for all currencies');
+        }
+
+        // 🎯 For maximum_amount field, use currency exchange multipliers: multiply EUR value by each currency multiplier
+        if (fieldName === 'maximum_amount' && adminConfig && adminConfig.maximum_amount) {
+            if (adminConfig.maximum_amount.length > 0) {
+                const multiplierTable = adminConfig.maximum_amount[0]; // Get first (and typically only) multiplier table
+                if (multiplierTable.values) {
+                    const result: Record<string, number> = { '*': eurValue }; // EUR as fallback
+                    CURRENCIES.forEach(curr => {
+                        const multiplier = multiplierTable.values[curr] || 1;
+                        result[curr] = parseFloat((eurValue * multiplier).toFixed(4));
+                    });
+                    console.log('✅ Applied actual currency exchange multipliers:', result);
+                    return result;
+                }
+            }
+            console.warn('⚠️ No actual currency exchange multiplier table found - using EUR value for all currencies');
         }
 
         // 🎯 For maximum_withdraw field, search admin config tables
@@ -265,8 +290,9 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     const validate = (): boolean => {
         const newErrors: string[] = [];
 
-        if (!gameId.trim()) newErrors.push('Game ID is required');
-        if (minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0');
+        if (!bonusId.trim()) newErrors.push('Bonus ID is required');
+        if (!provider.trim()) newErrors.push('Provider is required');
+        if (minimumAmountEUR !== '' && minimumAmountEUR <= 0) newErrors.push('Minimum amount must be > 0 if provided');
         if (percentage <= 0) newErrors.push('Percentage must be > 0');
         if (wageringMultiplier <= 0) newErrors.push('Wagering multiplier must be > 0');
         // Validate schedule only if one field is filled
@@ -290,18 +316,56 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 maxWithdrawMap[curr] = maxWithdrawMultiplier;
             });
 
+            // Fetch proportions from admin based on selected type
+            let proportionsObject = {};
+            if (proportionsType === 'casino' && adminConfig?.casino_proportions) {
+                try {
+                    let proportionsData = typeof adminConfig.casino_proportions === 'string'
+                        ? JSON.parse(adminConfig.casino_proportions)
+                        : adminConfig.casino_proportions;
+
+                    // If it's an array (table format), extract the first table's values
+                    if (Array.isArray(proportionsData) && proportionsData.length > 0) {
+                        proportionsObject = proportionsData[0].values || {};
+                    } else if (typeof proportionsData === 'object' && !Array.isArray(proportionsData)) {
+                        proportionsObject = proportionsData;
+                    }
+                    console.log('✅ Loaded casino proportions:', proportionsObject);
+                } catch (err) {
+                    console.error('❌ Failed to parse casino_proportions:', err);
+                }
+            } else if (proportionsType === 'live_casino' && adminConfig?.live_casino_proportions) {
+                try {
+                    let proportionsData = typeof adminConfig.live_casino_proportions === 'string'
+                        ? JSON.parse(adminConfig.live_casino_proportions)
+                        : adminConfig.live_casino_proportions;
+
+                    // If it's an array (table format), extract the first table's values
+                    if (Array.isArray(proportionsData) && proportionsData.length > 0) {
+                        proportionsObject = proportionsData[0].values || {};
+                    } else if (typeof proportionsData === 'object' && !Array.isArray(proportionsData)) {
+                        proportionsObject = proportionsData;
+                    }
+                    console.log('✅ Loaded live_casino proportions:', proportionsObject);
+                } catch (err) {
+                    console.error('❌ Failed to parse live_casino_proportions:', err);
+                }
+            }
+
             const payload: any = {
-                id: gameId,
+                id: bonusId,
                 bonus_type: 'reload',
                 trigger_type: triggerType,
                 trigger_duration: duration,
+                trigger_name: undefined,
+                trigger_description: undefined,
                 category: category,
                 provider: provider,
-                brand: 'SYSTEM',
-                config_type: 'cash',
+                brand: provider,
+                config_type: configType,
                 percentage: percentage,
                 wagering_multiplier: wageringMultiplier,
-                minimum_amount: buildCurrencyMap(minimumAmountEUR, 'minimum_amount'),
+                ...(minimumAmountEUR !== '' && minimumAmountEUR > 0 && { minimum_amount: buildCurrencyMap(minimumAmountEUR as number, 'minimum_amount') }),
                 minimum_stake_to_wager: buildCurrencyMap(minStakeEUR, 'minimum_stake_to_wager'),
                 maximum_stake_to_wager: buildCurrencyMap(maxStakeEUR, 'maximum_stake_to_wager'),
                 maximum_amount: buildCurrencyMap(maxAmountEUR, 'maximum_amount'),
@@ -310,18 +374,17 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 cap_calculation_to_maximum: capCalculation,
                 compensate_overspending: true,
                 withdraw_active: false,
-                restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : null,
-                segments: segments.length > 0 ? segments : null,
+                restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : undefined,
+                segments: segments.length > 0 ? segments : undefined,
+                schedule_type: 'period',
+                schedule_from: scheduleFrom ? formatDateTimeForPayload(scheduleFrom) : undefined,
+                schedule_to: scheduleTo ? formatDateTimeForPayload(scheduleTo) : undefined,
                 notes: notes || undefined,
+                proportions: proportionsObject,
+                game: undefined,
                 ...(iterations !== '' && iterations > 0 && { trigger_iterations: iterations }),
-                ...(scheduleFrom && scheduleTo && {
-                    schedule_from: formatDateTimeForPayload(scheduleFrom),
-                    schedule_to: formatDateTimeForPayload(scheduleTo),
-                    schedule_type: 'period',
-                }),
                 config_extra: {
                     category: category,
-                    proportions_type: proportionsType,
                 },
                 expiry: expiry,
             };
@@ -329,10 +392,11 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
             // Save to database
             await axios.post('http://localhost:8000/api/bonus-templates', payload);
 
-            alert(`✅ Reload Bonus "${gameId}" saved successfully!`);
+            alert(`✅ Reload Bonus "${bonusId}" saved successfully!`);
             onBonusSaved?.();
 
             // Reset form
+            setBonusId('');
             setGameId('');
             setRestrictedCountries([]);
             setSegments([]);
@@ -369,33 +433,32 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
             )}
 
             <div className="space-y-6">
-                {/* Game ID */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-blue-500/40">
-                    <label className="block text-sm font-semibold text-slate-100 mb-2">Game ID *</label>
-                    <input
-                        type="text"
-                        value={gameId}
-                        onChange={(e) => setGameId(e.target.value)}
-                        placeholder="e.g., 150% Casino Reload Bonus up to €250"
-                        className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
-                    />
+                {/* Bonus ID and Provider */}
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg hover:border-purple-400/40 transition-all">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-5">🏷️ Bonus Details</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-slate-300 mb-2 font-semibold">Bonus ID *</label>
+                            <input
+                                type="text"
+                                value={bonusId}
+                                onChange={(e) => setBonusId(e.target.value)}
+                                placeholder="e.g., RELOAD_150_CASINO"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 focus:outline-none transition-all text-base"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-slate-300 mb-2 font-semibold">Provider *</label>
+                            <input
+                                type="text"
+                                value={provider}
+                                onChange={(e) => setProvider(e.target.value)}
+                                placeholder="e.g., SYSTEM"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 focus:outline-none transition-all text-base"
+                            />
+                        </div>
+                    </div>
                 </div>
-
-                {/* Provider Selection */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-indigo-500/40">
-                    <label className="block text-sm font-semibold text-slate-100 mb-2">Provider</label>
-                    <select
-                        value={provider}
-                        onChange={(e) => setProvider(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                    >
-                        <option value="SYSTEM" className="bg-slate-800">SYSTEM</option>
-                        <option value="PRAGMATIC" className="bg-slate-800">PRAGMATIC</option>
-                        <option value="BETSOFT" className="bg-slate-800">BETSOFT</option>
-                    </select>
-                    {loadingAdmin && <p className="text-xs text-indigo-400 mt-2">📡 Fetching admin setup...</p>}
-                </div>
-
                 {/* 📋 Segments */}
                 <div className="p-3 bg-slate-700/40 rounded border border-purple-500/40">
                     <label className="block text-sm font-medium text-slate-100 mb-2">📋 Segments (Optional - comma separated or press Enter)</label>
@@ -479,6 +542,17 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                             />
                         </div>
                     </div>
+
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium text-slate-100 mb-1">Timezone (Optional)</label>
+                        <input
+                            type="text"
+                            value={scheduleTimezone}
+                            onChange={(e) => setScheduleTimezone(e.target.value)}
+                            placeholder="e.g., CET, UTC, EST"
+                            className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                        />
+                    </div>
                 </div>
 
                 {/* ============ TRIGGER ============ */}
@@ -488,11 +562,12 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR) *</label>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR) - Optional</label>
                                 <input
                                     type="number"
                                     value={minimumAmountEUR}
-                                    onChange={(e) => setMinimumAmountEUR(parseFloat(e.target.value))}
+                                    onChange={(e) => setMinimumAmountEUR(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                    placeholder="Leave empty if not required"
                                     className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
                                 />
                             </div>
@@ -510,6 +585,17 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
+                                <input
+                                    type="text"
+                                    value={configType}
+                                    onChange={(e) => setConfigType(e.target.value)}
+                                    placeholder="e.g., deposit"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-100 mb-1">Trigger Type</label>
                                 <select
                                     value={triggerType}
                                     onChange={(e) => setTriggerType(e.target.value)}
@@ -620,15 +706,13 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-100 mb-1">Category</label>
-                                <select
+                                <input
+                                    type="text"
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                >
-                                    <option value="games">Games</option>
-                                    <option value="live_casino">Live Casino</option>
-                                    <option value="sports">Sports</option>
-                                </select>
+                                    placeholder="e.g., games"
+                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                />
                             </div>
                         </div>
 

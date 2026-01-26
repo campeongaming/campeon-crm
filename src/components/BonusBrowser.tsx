@@ -15,6 +15,7 @@ interface BonusItem {
     trigger_type: string;
     percentage: number;
     created_at: string;
+    bonus_type?: string;
 }
 
 export default function BonusBrowser() {
@@ -164,7 +165,7 @@ export default function BonusBrowser() {
 
         setLoading(true);
         try {
-            await axios.delete(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${bonusId}`);
+            await axios.delete(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${encodeURIComponent(bonusId)}`);
             setMessage(`✅ Bonus "${bonusId}" deleted successfully`);
             setBonuses(bonuses.filter(b => b.id !== bonusId));
             if (selectedBonusId === bonusId) {
@@ -310,11 +311,18 @@ export default function BonusBrowser() {
                                 >
                                     <div className="flex justify-between items-start gap-4">
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-white mb-1">{bonus.name}</h4>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <h4 className="font-bold text-white">{bonus.id}</h4>
+                                                {bonus.bonus_type && (
+                                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-600/40 text-blue-300 border border-blue-500/50">
+                                                        {bonus.bonus_type.toUpperCase()}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-xs text-slate-400 space-y-1">
-                                                <div><span className="font-medium">ID:</span> {bonus.id}</div>
+                                                <div><span className="font-medium">Name:</span> {bonus.name}</div>
                                                 <div><span className="font-medium">Provider:</span> {bonus.provider} | <span className="font-medium">Brand:</span> {bonus.brand}</div>
-                                                <div><span className="font-medium">Category:</span> {bonus.category} | <span className="font-medium">Type:</span> {bonus.trigger_type}</div>
+                                                <div><span className="font-medium">Category:</span> {bonus.category} | <span className="font-medium">Trigger Type:</span> {bonus.trigger_type}</div>
                                                 <div><span className="font-medium">Bonus:</span> {bonus.percentage}% | <span className="font-medium">Created:</span> {new Date(bonus.created_at).toLocaleString()}</div>
                                             </div>
                                         </div>

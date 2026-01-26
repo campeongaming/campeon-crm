@@ -11,6 +11,7 @@ interface BonusTemplate {
     provider: string;
     brand: string;
     created_at: string;
+    bonus_type?: string;
 }
 
 interface ValidationError {
@@ -141,8 +142,10 @@ export default function OptimizationTeam() {
         setMessage('');
         try {
             // Fetch complete JSON with merged translations from backend
+            // URL-encode the bonus ID to handle special characters (€, %, spaces, etc.)
+            const encodedBonusId = encodeURIComponent(selectedBonusId);
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/${selectedBonusId}/json`
+                `http://localhost:8000/api/bonus-templates/${encodedBonusId}/json`
             );
 
             const bonusJson = response.data;
@@ -321,9 +324,16 @@ export default function OptimizationTeam() {
                                     : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
                                     }`}
                             >
-                                <div className="font-semibold text-sm">{bonus.id}</div>
+                                <div className="mb-2">
+                                    <div className="font-bold text-sm mb-1 line-clamp-2">{bonus.id}</div>
+                                    {bonus.bonus_type && (
+                                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-blue-600/40 text-blue-300 border border-blue-500/50">
+                                            {bonus.bonus_type.toUpperCase()}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-xs text-slate-400">
-                                    {bonus.provider} • {bonus.brand} • {bonus.category}
+                                    {bonus.provider} • {bonus.brand}
                                 </div>
                             </button>
                         ))}

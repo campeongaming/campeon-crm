@@ -399,6 +399,9 @@ export default function AdminPanel() {
         // Sort by ID ascending (Table 1, Table 2, Table 3, etc. from left to right)
         tables = [...tables].sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
+        // Check if this is a multiplier field (deposit or currency exchange)
+        const isMultiplierField = field === 'minimum_amount' || field === 'maximum_amount';
+
         return (
             <div>
                 <div className="mb-6">
@@ -430,7 +433,9 @@ export default function AdminPanel() {
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex-1">
                                         <h4 className="font-semibold text-white text-sm mb-1">{table.name}</h4>
-                                        <div className="text-2xl font-bold text-cyan-400">€{eurValue.toFixed(2)}</div>
+                                        {!isMultiplierField && (
+                                            <div className="text-2xl font-bold text-cyan-400">€{eurValue.toFixed(2)}</div>
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => handleRemoveTable(field, table.id)}
@@ -625,8 +630,21 @@ export default function AdminPanel() {
                             )}
                             {activeTab === 'amounts' && (
                                 <div className="space-y-8">
-                                    {renderSettingTable('minimum_amount', 'Minimum Deposit Amount', 'Minimum deposit amount required per currency')}
-                                    {renderSettingTable('maximum_amount', 'Maximum Deposit Amount', 'Maximum deposit amount allowed per currency')}
+                                    <div className="p-4 bg-blue-900/30 border border-blue-600/50 rounded-lg mb-4">
+                                        <p className="text-sm text-blue-300">
+                                            <strong>ℹ️ Deposit Multiplier:</strong> These values multiply the EUR minimum deposit amount entered in the bonus form.
+                                            <br />Example: If EUR minimum = 25 and BRL multiplier = 2.0, then BRL minimum = 50
+                                        </p>
+                                    </div>
+                                    {renderSettingTable('minimum_amount', 'Deposit Multiplier', 'Currency multiplier for minimum deposit (EUR amount × multiplier)')}
+
+                                    <div className="p-4 bg-purple-900/30 border border-purple-600/50 rounded-lg mb-4">
+                                        <p className="text-sm text-purple-300">
+                                            <strong>ℹ️ Actual Currency Exchange:</strong> These values multiply the EUR maximum amount entered in the bonus form.
+                                            <br />Example: If EUR maximum = 1000 and USD multiplier = 1.1, then USD maximum = 1100
+                                        </p>
+                                    </div>
+                                    {renderSettingTable('maximum_amount', 'Actual Currency Exchange', 'Currency multiplier for maximum amount (EUR amount × multiplier)')}
                                 </div>
                             )}
                             {activeTab === 'withdrawals' && renderSettingTable('maximum_withdraw', 'Maximum Withdrawal', 'Maximum amount players can withdraw from bonus winnings')}

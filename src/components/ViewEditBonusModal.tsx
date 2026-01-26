@@ -66,6 +66,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
     // Editable state
     const [scheduleFrom, setScheduleFrom] = useState('');
     const [scheduleTo, setScheduleTo] = useState('');
+    const [scheduleTimezone, setScheduleTimezone] = useState('');
     const [triggerName, setTriggerName] = useState('');
     const [triggerDescription, setTriggerDescription] = useState('');
     const [percentage, setPercentage] = useState(0);
@@ -108,6 +109,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
             // Pre-fill other editable fields
             setScheduleFrom(data.schedule_from || '');
             setScheduleTo(data.schedule_to || '');
+            setScheduleTimezone(data.timezone || '');
             setPercentage(data.percentage || 0);
             setWageringMultiplier(data.wagering_multiplier || 0);
             setExpiry(data.expiry || '7d');
@@ -130,6 +132,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
             const payload = {
                 schedule_from: scheduleFrom,
                 schedule_to: scheduleTo,
+                ...(scheduleTimezone && { timezone: scheduleTimezone }),
                 trigger_name: { '*': triggerName },
                 trigger_description: { '*': triggerDescription },
                 percentage,
@@ -138,7 +141,7 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
                 notes,
             };
 
-            await axios.patch(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${bonusId}`, payload);
+            await axios.patch(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${encodeURIComponent(bonusId)}`, payload);
             setMessage('✅ Bonus updated successfully!');
             setIsEditing(false);
             if (onSave) onSave();
@@ -253,6 +256,20 @@ export default function ViewEditBonusModal({ bonusId, mode, onClose, onSave }: P
                                         />
                                     ) : (
                                         <div className="text-white">{bonus.schedule_to || 'N/A'}</div>
+                                    )}
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-slate-400 mb-1">Timezone (Optional)</label>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={scheduleTimezone}
+                                            onChange={(e) => setScheduleTimezone(e.target.value)}
+                                            placeholder="e.g., CET, UTC, EST"
+                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                        />
+                                    ) : (
+                                        <div className="text-white">{bonus.timezone || 'N/A'}</div>
                                     )}
                                 </div>
                             </div>

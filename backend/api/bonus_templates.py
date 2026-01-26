@@ -54,6 +54,7 @@ def create_bonus_template(template: BonusTemplateCreate, db: Session = Depends(g
         maximum_stake_to_wager=template.maximum_stake_to_wager,
         maximum_amount=template.maximum_amount,
         maximum_withdraw=template.maximum_withdraw,
+        proportions=template.proportions,
         include_amount_on_target_wager=template.include_amount_on_target_wager,
         cap_calculation_to_maximum=template.cap_calculation_to_maximum,
         compensate_overspending=template.compensate_overspending,
@@ -616,8 +617,32 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
         "game": template.game if template.game else template.bonus_type,
     }
 
-    # Fetch proportions if needed
+    # Fetch proportions if present (stored as separate DB field now)
     proportions_text = None
+
+    if template.proportions:
+        import json as json_parser
+        try:
+            # Proportions can be dict or string (JSON)
+            if isinstance(template.proportions, str):
+                proportions_obj = json_parser.loads(template.proportions)
+            else:
+                proportions_obj = template.proportions
+
+            # Convert proportions object to JSON string format
+            if isinstance(proportions_obj, dict):
+                proportions_items = []
+                for key, value in proportions_obj.items():
+                    proportions_items.append(f'"{key}": {value}')
+                if proportions_items:
+                    proportions_text = ', '.join(proportions_items)
+                    print(
+                        f"✅ Loaded proportions from template field: {len(proportions_items)} items")
+        except Exception as e:
+            print(f"❌ ERROR parsing proportions: {e}")
+            import traceback
+            traceback.print_exc()
+
     if template.config_extra:
         import json as json_parser
         try:
@@ -629,68 +654,136 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
             # Get game name from config_extra if it exists
             if config_extra_parsed.get('game'):
                 extra_data["game"] = config_extra_parsed.get('game')
-
-            proportions_type = config_extra_parsed.get('proportions_type')
-
-            if proportions_type:
-                admin_config = db.query(StableConfig).filter(
-                    StableConfig.provider == 'PRAGMATIC'
-                ).first()
-
-                if admin_config:
-                    if proportions_type == 'casino' and admin_config.casino_proportions:
-                        proportions_text = admin_config.casino_proportions.strip()
-                    elif proportions_type == 'live_casino' and admin_config.live_casino_proportions:
-                        proportions_text = admin_config.live_casino_proportions.strip()
-        except:
-            pass
+        except Exception as e:
+            print(f"ERROR parsing config_extra: {e}")
+            import traceback
+            traceback.print_exc()
 
     # Build the config section manually as a string
     import json as json_lib
 
-    # Build config_dict with cost/multiplier/maximumBets first for free_spins
-    config_dict = {}
+    # Build config JSON manually with correct field ordering
+    # to ensure compensateOverspending always comes before maximumAmount
+    config_json = '{\n'
 
-    # Add free_spins specific fields FIRST if bonus_type is free_spins and they have values
+    # Add free_spins specific fields FIRST if bonus_type is free_spins
     if template.bonus_type == 'free_spins':
         if template.cost:
-            config_dict["cost"] = template.cost
+            config_json += '    "cost": ' + \
+                json_lib.dumps(template.cost) + ',\n'
         if template.multiplier:
-            config_dict["multiplier"] = template.multiplier
+            config_json += '    "multiplier": ' + \
+                json_lib.dumps(template.multiplier) + ',\n'
         if template.maximum_bets:
-            config_dict["maximumBets"] = template.maximum_bets
-
-    # Then add the common fields
-    config_dict["provider"] = template.provider
-    config_dict["brand"] = template.brand
-    config_dict["type"] = template.bonus_type
-    config_dict["category"] = template.category
-    config_dict["maximumWithdraw"] = maximum_withdraw_formatted
+            config_json += '    "maximumBets": ' + \
+                json_lib.dumps(template.maximum_bets) + ',\n'
 
     # Add stake to wager fields if present and non-zero
     if template.minimum_stake_to_wager:
-        # Check if any currency has a non-zero value
         if isinstance(template.minimum_stake_to_wager, dict):
             has_value = any(val > 0 for val in template.minimum_stake_to_wager.values(
             ) if isinstance(val, (int, float)))
             if has_value:
-                config_dict["minimumStakeToWager"] = template.minimum_stake_to_wager
+                config_json += '    "minimumStakeToWager": ' + \
+                    json_lib.dumps(template.minimum_stake_to_wager, indent=6).replace(
+                        '\n', '\n    ') + ',\n'
 
     if template.maximum_stake_to_wager:
-        # Check if any currency has a non-zero value
         if isinstance(template.maximum_stake_to_wager, dict):
             has_value = any(val > 0 for val in template.maximum_stake_to_wager.values(
             ) if isinstance(val, (int, float)))
             if has_value:
-                config_dict["maximumStakeToWager"] = template.maximum_stake_to_wager
+                config_json += '    "maximumStakeToWager": ' + \
+                    json_lib.dumps(template.maximum_stake_to_wager, indent=6).replace(
+                        '\n', '\n    ') + ',\n'
 
-    config_json = json_lib.dumps(config_dict, indent=2)
+    # Add compensateOverspending FIRST
+    config_json += '    "compensateOverspending": ' + \
+        json_lib.dumps(template.compensate_overspending) + ',\n'
 
-    # Remove the closing brace from config
-    config_json = config_json.rstrip()[:-1]  # Remove last }
+    # Add maximum amount if present
+    if template.maximum_amount:
+        config_json += '    "maximumAmount": ' + \
+            json_lib.dumps(template.maximum_amount, indent=6).replace(
+                '\n', '\n    ') + ',\n'
+
+    # Add percentage and wagering_multiplier (important for all bonus types)
+    config_json += '    "percentage": ' + \
+        json_lib.dumps(template.percentage) + ',\n'
+    config_json += '    "wageringMultiplier": ' + \
+        json_lib.dumps(template.wagering_multiplier) + ',\n'
+
+    # Add conditional flags
+    config_json += '    "includeAmountOnTargetWagerCalculation": ' + \
+        json_lib.dumps(template.include_amount_on_target_wager) + ',\n'
+    config_json += '    "capCalculationAmountToMaximumBonus": ' + \
+        json_lib.dumps(template.cap_calculation_to_maximum) + ',\n'
+
+    # Add common fields - different order for free_spins vs reload
+    if template.bonus_type == 'free_spins':
+        # Free spins: provider, brand, type, withdrawActive, category
+        config_json += '    "provider": ' + \
+            json_lib.dumps(template.provider) + ',\n'
+        config_json += '    "brand": ' + json_lib.dumps(template.brand) + ',\n'
+        config_json += '    "type": ' + \
+            json_lib.dumps(template.config_type) + ',\n'
+        config_json += '    "withdrawActive": ' + \
+            json_lib.dumps(template.withdraw_active) + ',\n'
+        config_json += '    "category": ' + \
+            json_lib.dumps(template.category) + ',\n'
+    else:
+        # Reload/Cashback: type, withdrawActive, category (provider goes at end)
+        config_json += '    "type": ' + \
+            json_lib.dumps(template.config_type) + ',\n'
+        config_json += '    "withdrawActive": ' + \
+            json_lib.dumps(template.withdraw_active) + ',\n'
+        config_json += '    "category": ' + \
+            json_lib.dumps(template.category) + ',\n'
+
+    # Add maximumWithdraw based on bonus type
+    if template.bonus_type == 'free_spins':
+        # Free spins: wrap values in cap structure
+        if template.maximum_withdraw:
+            withdraw_with_cap = {}
+            if isinstance(template.maximum_withdraw, dict):
+                for currency, value in template.maximum_withdraw.items():
+                    if isinstance(value, (int, float)):
+                        withdraw_with_cap[currency] = {"cap": value}
+
+            if withdraw_with_cap:
+                config_json += '    "maximumWithdraw": ' + \
+                    json_lib.dumps(withdraw_with_cap, indent=6).replace(
+                        '\n', '\n    ') + ',\n'
+    else:
+        # Reload/Cashback: calculate based on percentage tiers
+        if template.percentage:
+            # Percentage to multiplier mapping
+            if template.percentage >= 200:
+                multiplier = 3
+            elif template.percentage >= 150:
+                multiplier = 6
+            elif template.percentage >= 120:
+                multiplier = 8
+            elif template.percentage >= 100:
+                multiplier = 10
+            else:  # 25-99
+                multiplier = 12
+
+            calculated_withdraw = {}
+
+            # Create withdraw object with the multiplier for all currencies
+            for currency in ['EUR', 'USD', 'CAD', 'AUD', 'NZD', 'BRL', 'NOK', 'PEN',
+                             'CLP', 'MXN', 'GBP', 'CHF', 'ZAR', 'PLN', 'JPY', 'AZN',
+                             'TRY', 'KZT', 'RUB', 'UZS', '*']:
+                calculated_withdraw[currency] = multiplier
+
+            if calculated_withdraw:
+                config_json += '    "maximumWithdraw": ' + \
+                    json_lib.dumps(calculated_withdraw, indent=6).replace(
+                        '\n', '\n    ') + ',\n'
 
     # Add extra section manually with proportions injected
-    config_json += ',\n    "extra": {\n'
+    config_json += '    "extra": {\n'
     config_json += '      "category": "' + \
         str(extra_data.get("category", "")) + '"'
 
@@ -702,15 +795,19 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
     if proportions_text:
         config_json += ',\n      "proportions": {' + proportions_text + '}'
 
-    config_json += '\n    }\n'
+    config_json += '\n    }'
 
     # Add expiry field if present
     if template.expiry:
-        config_json += ',\n    "expiry": "' + str(template.expiry) + '"\n'
-    else:
-        config_json += '\n'
+        config_json += ',\n    "expiry": "' + str(template.expiry) + '"'
 
-    config_json += '  }'
+    # For reload/cashback bonuses, add provider after expiry
+    # For free_spins, provider is already added earlier
+    if template.bonus_type != 'free_spins':
+        config_json += ',\n    "provider": ' + \
+            json_lib.dumps(template.provider)
+
+    config_json += '\n  }'
 
     # Now build complete JSON manually
     json_str = '{\n'
