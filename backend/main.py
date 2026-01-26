@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from api.bonus_templates import router as bonus_templates_router
 from api.stable_config import router as stable_config_router
 from api.custom_languages import router as custom_languages_router
+from api.auth import router as auth_router
 from database.database import init_db
 
 
@@ -39,6 +40,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router, tags=["auth"])
 app.include_router(bonus_templates_router, prefix="/api",
                    tags=["bonus-templates"])
 app.include_router(stable_config_router, prefix="/api",

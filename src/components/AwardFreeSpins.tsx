@@ -13,6 +13,7 @@ interface AdminConfig {
     minimum_amount?: CurrencyTable[];
     cost?: CurrencyTable[];
     maximum_withdraw?: CurrencyTable[];
+    currency_unit?: CurrencyTable[];
     minimum_stake_to_wager?: CurrencyTable[];
     maximum_stake_to_wager?: CurrencyTable[];
     maximum_bets?: CurrencyTable[];
@@ -61,9 +62,8 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
     const [includeAmount, setIncludeAmount] = useState(true);
     const [capCalculation, setCapCalculation] = useState(false);
 
-    // Up To feature - total FS and FS/EUR ratio
+    // Up To feature - FS/EUR ratio only (total FS comes from maximumBetsEUR)
     const [upTo, setUpTo] = useState(false);
-    const [upToTotalFs, setUpToTotalFs] = useState(500);
     const [upToFsPerEuro, setUpToFsPerEuro] = useState(10);
 
     // Validation
@@ -221,8 +221,17 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
             const cost = costMap[curr] || costEUR;
             if (cost > 0) {
                 if (upTo) {
-                    // When Up To is enabled: multiplier = (Total FS / Cost) * FS/EUR ratio
-                    multiplierMap[curr] = parseFloat((upToTotalFs / cost * upToFsPerEuro).toFixed(4));
+                    // When Up To is enabled: multiplier = (FS/EUR * cost) / currencyUnit
+                    // Get currency unit for this currency (default to 1 if not found)
+                    let currencyUnitValue = 1;
+                    if (adminConfig?.currency_unit && adminConfig.currency_unit.length > 0) {
+                        const unitTable = adminConfig.currency_unit[0];
+                        currencyUnitValue = unitTable.values?.[curr] || 1;
+                    }
+
+                    const multiplier = (upToFsPerEuro * cost) / currencyUnitValue;
+                    multiplierMap[curr] = parseFloat(multiplier.toFixed(4));
+                    console.log(`✅ Up To multiplier for ${curr}: (${upToFsPerEuro} * ${cost}) / ${currencyUnitValue} = ${multiplier.toFixed(4)}`);
                 } else if (minimumAmountEUR !== '' && minimumAmountEUR > 0 && maximumBetsEUR !== '' && maximumBetsEUR > 0) {
                     // Original logic: multiplier = maximumBetsEUR / (minimumAmountEUR / cost)
                     const fsValue = (minimumAmountEUR as number) / cost;
@@ -440,7 +449,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 }),
                 config_extra: { game: game },
                 up_to: upTo,
-                ...(upTo && { up_to_total_fs: upToTotalFs, up_to_fs_per_euro: upToFsPerEuro }),
+                ...(upTo && { up_to_fs_per_euro: upToFsPerEuro }),
             };
 
             // Save to database
@@ -741,27 +750,15 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                             </label>
 
                             {upTo && (
-                                <div className="mt-4 p-3 bg-slate-800/50 rounded border border-green-500/40 grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-100 mb-1">Up To Free Spins</label>
-                                        <input
-                                            type="number"
-                                            value={upToTotalFs}
-                                            onChange={(e) => setUpToTotalFs(Number(e.target.value) || 0)}
-                                            step="1"
-                                            className="w-full px-3 py-2 border border-slate-600 rounded text-slate-100 bg-slate-900/60"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-100 mb-1">FS / Euro</label>
-                                        <input
-                                            type="number"
-                                            value={upToFsPerEuro}
-                                            onChange={(e) => setUpToFsPerEuro(Number(e.target.value) || 1)}
-                                            step="0.1"
-                                            className="w-full px-3 py-2 border border-slate-600 rounded text-slate-100 bg-slate-900/60"
-                                        />
-                                    </div>
+                                <div className="mt-4 p-3 bg-slate-800/50 rounded border border-green-500/40">
+                                    <label className="block text-sm font-medium text-slate-100 mb-1">Free Spins for each EURO deposited</label>
+                                    <input
+                                        type="number"
+                                        value={upToFsPerEuro}
+                                        onChange={(e) => setUpToFsPerEuro(Number(e.target.value) || 1)}
+                                        step="0.1"
+                                        className="w-full px-3 py-2 border border-slate-600 rounded text-slate-100 bg-slate-900/60"
+                                    />
                                 </div>
                             )}
                         </div>

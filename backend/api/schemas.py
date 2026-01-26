@@ -16,6 +16,7 @@ class StableConfigCreate(BaseModel):
     cost: List[CurrencyTable] = []
     maximum_amount: List[CurrencyTable] = []
     minimum_amount: List[CurrencyTable] = []
+    currency_unit: List[CurrencyTable] = []
     minimum_stake_to_wager: List[CurrencyTable] = []
     maximum_stake_to_wager: List[CurrencyTable] = []
     maximum_withdraw: List[CurrencyTable] = []
@@ -149,6 +150,39 @@ class CurrencyReferenceResponse(CurrencyReferenceCreate):
 
     class Config:
         from_attributes = True
+
+
+class UserLogin(BaseModel):
+    """Schema for user login"""
+    username: str
+    password: str
+
+
+class UserRegister(BaseModel):
+    """Schema for user registration"""
+    username: str
+    email: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    """Schema for user response"""
+    id: int
+    username: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TokenResponse(BaseModel):
+    """Schema for token response"""
+    access_token: str
+    token_type: str
+    user: UserResponse
 
 
 class BonusJSONOutput(BaseModel):

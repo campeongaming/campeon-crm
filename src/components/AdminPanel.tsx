@@ -19,6 +19,7 @@ interface StableConfigWithVariations {
     cost: CurrencyTable[];
     maximum_amount: CurrencyTable[];
     minimum_amount: CurrencyTable[];
+    currency_unit: CurrencyTable[];
     minimum_stake_to_wager: CurrencyTable[];
     maximum_stake_to_wager: CurrencyTable[];
     maximum_withdraw: CurrencyTable[];
@@ -46,6 +47,7 @@ export default function AdminPanel() {
         cost: [],
         maximum_amount: [],
         minimum_amount: [],
+        currency_unit: [],
         minimum_stake_to_wager: [],
         maximum_stake_to_wager: [],
         maximum_withdraw: [],
@@ -56,6 +58,7 @@ export default function AdminPanel() {
         cost: [],
         maximum_amount: [],
         minimum_amount: [],
+        currency_unit: [],
         minimum_stake_to_wager: [],
         maximum_stake_to_wager: [],
         maximum_withdraw: [],
@@ -90,6 +93,7 @@ export default function AdminPanel() {
                         cost: response.data.cost && response.data.cost.length > 0 ? response.data.cost : [],
                         maximum_amount: response.data.maximum_amount && response.data.maximum_amount.length > 0 ? response.data.maximum_amount : [],
                         minimum_amount: response.data.minimum_amount && response.data.minimum_amount.length > 0 ? response.data.minimum_amount : [],
+                        currency_unit: response.data.currency_unit && response.data.currency_unit.length > 0 ? response.data.currency_unit : [],
                         minimum_stake_to_wager: response.data.minimum_stake_to_wager && response.data.minimum_stake_to_wager.length > 0 ? response.data.minimum_stake_to_wager : [],
                         maximum_stake_to_wager: response.data.maximum_stake_to_wager && response.data.maximum_stake_to_wager.length > 0 ? response.data.maximum_stake_to_wager : [],
                         maximum_withdraw: response.data.maximum_withdraw && response.data.maximum_withdraw.length > 0 ? response.data.maximum_withdraw : [],
@@ -187,7 +191,7 @@ export default function AdminPanel() {
         setLoading(true);
         try {
             const payload: any = {
-                provider: config.provider,
+                provider: activeTab === 'cost' ? selectedProvider : 'DEFAULT',
                 casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticCasinoProportions : betsoftCasinoProportions,
                 live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
             };
@@ -198,6 +202,7 @@ export default function AdminPanel() {
             } else if (activeTab === 'amounts') {
                 payload.minimum_amount = config.minimum_amount;
                 payload.maximum_amount = config.maximum_amount;
+                payload.currency_unit = config.currency_unit;
             } else if (activeTab === 'withdrawals') {
                 payload.maximum_withdraw = config.maximum_withdraw;
             } else if (activeTab === 'wager') {
@@ -212,6 +217,7 @@ export default function AdminPanel() {
             if (activeTab !== 'amounts') {
                 payload.minimum_amount = [];
                 payload.maximum_amount = [];
+                payload.currency_unit = [];
             }
             if (activeTab !== 'wager') {
                 payload.minimum_stake_to_wager = [];
@@ -226,7 +232,7 @@ export default function AdminPanel() {
             if (activeTab === 'cost') {
                 successMessage = `✅ ${selectedProvider} cost tables saved successfully!`;
             } else if (activeTab === 'amounts') {
-                successMessage = '✅ Minimum & maximum bonus amounts saved successfully!';
+                successMessage = '✅ Deposit Multiplier, Actual Currency Exchange and Currency Unit saved successfully!';
             } else if (activeTab === 'withdrawals') {
                 successMessage = '✅ Maximum withdrawal amounts saved successfully!';
             } else if (activeTab === 'wager') {
@@ -645,6 +651,14 @@ export default function AdminPanel() {
                                         </p>
                                     </div>
                                     {renderSettingTable('maximum_amount', 'Actual Currency Exchange', 'Currency multiplier for maximum amount (EUR amount × multiplier)')}
+
+                                    <div className="p-4 bg-green-900/30 border border-green-600/50 rounded-lg mb-4">
+                                        <p className="text-sm text-green-300">
+                                            <strong>ℹ️ Currency Unit:</strong> These values define FS per Euro multiplier for each currency (used in Up To feature calculation).
+                                            <br />Example: If EUR = 10 and USD = 10, then multiplier = FS / (cost × unit_value)
+                                        </p>
+                                    </div>
+                                    {renderSettingTable('currency_unit', 'Currency Unit', 'FS per Euro multiplier for Up To feature (FS / (cost × unit))')}
                                 </div>
                             )}
                             {activeTab === 'withdrawals' && renderSettingTable('maximum_withdraw', 'Maximum Withdrawal', 'Maximum amount players can withdraw from bonus winnings')}

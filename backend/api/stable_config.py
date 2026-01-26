@@ -27,7 +27,7 @@ def save_stable_config(config: StableConfigCreate, tab: Optional[str] = Query(No
         config_data = config.dict()
 
         # Convert CurrencyTable objects to dicts if needed
-        for field in ['cost', 'maximum_amount', 'minimum_amount', 'minimum_stake_to_wager', 'maximum_stake_to_wager', 'maximum_withdraw']:
+        for field in ['cost', 'maximum_amount', 'minimum_amount', 'currency_unit', 'minimum_stake_to_wager', 'maximum_stake_to_wager', 'maximum_withdraw']:
             if field in config_data and config_data[field]:
                 config_data[field] = [
                     item.dict() if hasattr(item, 'dict') else item
@@ -71,6 +71,8 @@ def save_stable_config(config: StableConfigCreate, tab: Optional[str] = Query(No
                     existing_config.maximum_amount = config_data['maximum_amount']
                 if config_data['minimum_amount']:
                     existing_config.minimum_amount = config_data['minimum_amount']
+                if config_data.get('currency_unit'):
+                    existing_config.currency_unit = config_data['currency_unit']
                 if config_data['minimum_stake_to_wager']:
                     existing_config.minimum_stake_to_wager = config_data['minimum_stake_to_wager']
                 if config_data['maximum_stake_to_wager']:
@@ -109,6 +111,7 @@ def save_stable_config(config: StableConfigCreate, tab: Optional[str] = Query(No
                     cost=[],
                     maximum_amount=config_data['maximum_amount'],
                     minimum_amount=config_data['minimum_amount'],
+                    currency_unit=config_data.get('currency_unit', []),
                     minimum_stake_to_wager=config_data['minimum_stake_to_wager'],
                     maximum_stake_to_wager=config_data['maximum_stake_to_wager'],
                     maximum_withdraw=config_data['maximum_withdraw'],
