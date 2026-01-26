@@ -697,9 +697,10 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
                     json_lib.dumps(template.maximum_stake_to_wager, indent=6).replace(
                         '\n', '\n    ') + ',\n'
 
-    # Add compensateOverspending FIRST
-    config_json += '    "compensateOverspending": ' + \
-        json_lib.dumps(template.compensate_overspending) + ',\n'
+    # Add compensateOverspending, percentage, and wageringMultiplier only for non-free_spins bonuses
+    if template.bonus_type != 'free_spins':
+        config_json += '    "compensateOverspending": ' + \
+            json_lib.dumps(template.compensate_overspending) + ',\n'
 
     # Add maximum amount if present
     if template.maximum_amount:
@@ -707,17 +708,19 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
             json_lib.dumps(template.maximum_amount, indent=6).replace(
                 '\n', '\n    ') + ',\n'
 
-    # Add percentage and wagering_multiplier (important for all bonus types)
-    config_json += '    "percentage": ' + \
-        json_lib.dumps(template.percentage) + ',\n'
-    config_json += '    "wageringMultiplier": ' + \
-        json_lib.dumps(template.wagering_multiplier) + ',\n'
+    # Add percentage and wagering_multiplier (only for non-free_spins bonuses)
+    if template.bonus_type != 'free_spins':
+        config_json += '    "percentage": ' + \
+            json_lib.dumps(template.percentage) + ',\n'
+        config_json += '    "wageringMultiplier": ' + \
+            json_lib.dumps(template.wagering_multiplier) + ',\n'
 
-    # Add conditional flags
-    config_json += '    "includeAmountOnTargetWagerCalculation": ' + \
-        json_lib.dumps(template.include_amount_on_target_wager) + ',\n'
-    config_json += '    "capCalculationAmountToMaximumBonus": ' + \
-        json_lib.dumps(template.cap_calculation_to_maximum) + ',\n'
+    # Add conditional flags (only for non-free_spins bonuses)
+    if template.bonus_type != 'free_spins':
+        config_json += '    "includeAmountOnTargetWagerCalculation": ' + \
+            json_lib.dumps(template.include_amount_on_target_wager) + ',\n'
+        config_json += '    "capCalculationAmountToMaximumBonus": ' + \
+            json_lib.dumps(template.cap_calculation_to_maximum) + ',\n'
 
     # Add common fields - different order for free_spins vs reload
     if template.bonus_type == 'free_spins':
@@ -784,11 +787,21 @@ def generate_template_json(template_id: str, db: Session = Depends(get_db)):
 
     # Add extra section manually with proportions injected
     config_json += '    "extra": {\n'
-    config_json += '      "category": "' + \
-        str(extra_data.get("category", "")) + '"'
+
+    # Only add category to extra for non-free_spins bonuses
+    if template.bonus_type != 'free_spins':
+        config_json += '      "category": "' + \
+            str(extra_data.get("category", "")) + '"'
+        has_extra_content = True
+    else:
+        has_extra_content = False
 
     # Only include game field for free_spins bonus type
     if template.bonus_type == 'free_spins' and extra_data.get("game"):
+        config_json += '      "game": "' + \
+            str(extra_data.get("game", "")) + '"'
+        has_extra_content = True
+    elif template.bonus_type != 'free_spins' and extra_data.get("game"):
         config_json += ',\n      "game": "' + \
             str(extra_data.get("game", "")) + '"'
 

@@ -60,7 +60,6 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
     const [expiry, setExpiry] = useState('7d');
     const [includeAmount, setIncludeAmount] = useState(true);
     const [capCalculation, setCapCalculation] = useState(false);
-    const [compensateOverspend, setCompensateOverspend] = useState(true);
 
     // Up To feature - total FS and FS/EUR ratio
     const [upTo, setUpTo] = useState(false);
@@ -429,10 +428,9 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 maximum_withdraw: buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw'),
                 include_amount_on_target_wager: includeAmount,
                 cap_calculation_to_maximum: capCalculation,
-                compensate_overspending: compensateOverspend,
                 withdraw_active: withdrawActive,
-                restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : null,
-                segments: segments.length > 0 ? segments : null,
+                ...(restrictedCountries.length > 0 && { restricted_countries: restrictedCountries }),
+                ...(segments.length > 0 && { segments: segments }),
                 notes: notes || undefined,
                 ...(scheduleFrom && scheduleTo && {
                     schedule_from: formatDateTimeForPayload(scheduleFrom),
@@ -442,8 +440,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 }),
                 config_extra: { game: game },
                 up_to: upTo,
-                up_to_total_fs: upTo ? upToTotalFs : null,
-                up_to_fs_per_euro: upTo ? upToFsPerEuro : null,
+                ...(upTo && { up_to_total_fs: upToTotalFs, up_to_fs_per_euro: upToFsPerEuro }),
             };
 
             // Save to database
