@@ -28,7 +28,7 @@ export default function BonusTypeSelector({ onBonusSaved }: { onBonusSaved?: () 
                     onChange={(e) => handleTypeChange(e.target.value)}
                     className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 font-medium appearance-none cursor-pointer"
                 >
-                    <option value="free_spins" className="bg-slate-800">🎟️ Award Free Spins</option>
+                    <option value="free_spins" className="bg-slate-800">🎁 Award Free Spins</option>
                     <option value="reload" className="bg-slate-800">🔄 Casino Reload Bonus</option>
                     <option value="cashback" className="bg-slate-800">💰 Cashback Bonus</option>
                 </select>
@@ -59,7 +59,7 @@ export default function BonusTypeSelector({ onBonusSaved }: { onBonusSaved?: () 
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Add any internal notes about this bonus... (click 🎨 Stickers to add fun emojis!)"
+                            placeholder="Add any internal notes about this bonus..."
                             rows={18}
                             className="w-full px-3 py-2 bg-slate-900/40 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder-slate-500 mb-4"
                         />

@@ -759,18 +759,19 @@ export default function AdminPanel() {
                                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-cyan-500 focus:outline-none"
                                 >
                                     <option value="">-- Select Target Field --</option>
-                                    {activeTab === 'cost' && <option value="cost">Cost</option>}
+                                    {activeTab === 'cost' && <option value="cost">Cost Pricing Tables</option>}
                                     {activeTab === 'amounts' && (
                                         <>
-                                            <option value="minimum_amount">Minimum Amount</option>
-                                            <option value="maximum_amount">Maximum Amount</option>
+                                            <option value="minimum_amount">Minimum Amount Tables</option>
+                                            <option value="maximum_amount">Maximum Amount Multipliers</option>
+                                            <option value="currency_unit">Currency Unit</option>
                                         </>
                                     )}
-                                    {activeTab === 'withdrawals' && <option value="maximum_withdraw">Maximum Withdraw</option>}
+                                    {activeTab === 'withdrawals' && <option value="maximum_withdraw">Maximum Withdraw Tables</option>}
                                     {activeTab === 'wager' && (
                                         <>
-                                            <option value="minimum_stake_to_wager">Minimum Stake to Wager</option>
-                                            <option value="maximum_stake_to_wager">Maximum Stake to Wager</option>
+                                            <option value="minimum_stake_to_wager">Minimum Stake to Wager Tables</option>
+                                            <option value="maximum_stake_to_wager">Maximum Stake to Wager Tables</option>
                                         </>
                                     )}
                                 </select>
@@ -805,7 +806,7 @@ export default function AdminPanel() {
                                 value={importData}
                                 onChange={(e) => setImportData(e.target.value)}
                                 placeholder="Paste data here... Supports both horizontal and vertical formats"
-                                className="w-full h-56 px-4 py-3 bg-slate-700 border border-slate-600 rounded text-white text-sm font-mono focus:border-cyan-500 focus:outline-none mb-4 mt-4"
+                                className="w-full h-56 px-4 py-3 bg-slate-700 border border-slate-600 rounded text-white text-sm font-mono focus:border-cyan-500 focus:outline-none mb-4 mt-4 overflow-x-auto whitespace-pre"
                             />
 
                             <div className="flex gap-2">

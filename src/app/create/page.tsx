@@ -4,6 +4,7 @@ import BonusTypeSelector from '@/components/BonusTypeSelector';
 import Navigation from '../../components/Navigation';
 
 export default function CreatePage() {
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
             <div className="w-full px-10 py-10">

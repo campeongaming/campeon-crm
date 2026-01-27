@@ -32,14 +32,24 @@ export default function LoginPage() {
                 password,
             });
 
+            console.log('Login response:', response.data);
+
             if (response.data && response.data.access_token) {
+                console.log('Login successful, redirecting to /create');
                 // Store auth token and user info
                 localStorage.setItem('auth_token', response.data.access_token);
                 localStorage.setItem('auth_user', JSON.stringify(response.data.user));
 
-                // Redirect to dashboard
-                router.push('/');
+                // Dispatch storage event to trigger AuthContext update
+                window.dispatchEvent(new Event('storage'));
+
+                // Wait a tiny bit for context to update, then redirect
+                setTimeout(() => {
+                    console.log('Redirecting to /create');
+                    router.push('/create');
+                }, 100);
             } else {
+                console.log('No access token in response');
                 setError('Invalid response from server');
             }
         } catch (err: any) {
@@ -78,11 +88,11 @@ export default function LoginPage() {
 
             {/* Login Card */}
             <div className="relative w-full max-w-md">
-                <div className="bg-gradient-to-b from-slate-800/90 to-slate-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-700/60 p-8 transition-all duration-300 hover:shadow-purple-500/20 hover:shadow-2xl">
+                <div className="bg-gradient-to-b from-slate-800/90 to-slate-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-700/60 p-8">
                     {/* Logo Section with glow */}
                     <div className="flex flex-col items-center mb-8 group">
                         <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100"></div>
                             <Image
                                 src="/Bonuslab_transparent.png"
                                 alt="CAMPEON CRM"
@@ -144,8 +154,11 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    disabled={loading}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-3 text-slate-400 hover:text-purple-400 hover:bg-slate-700/50 border border-transparent hover:border-slate-600/50 rounded-lg z-10 cursor-pointer"
+                                    aria-pressed={showPassword}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    title={showPassword ? 'Hide password' : 'Show password'}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-3 text-slate-400 hover:text-purple-400 hover:bg-slate-700/50 border border-transparent hover:border-slate-600/50 rounded-lg z-10 cursor-pointer pointer-events-auto"
+                                    style={{ pointerEvents: 'auto' }}
                                 >
                                     {showPassword ? (
                                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -162,7 +175,7 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        {/* Submit Button with enhanced styling */}
+                        {/* Submit Button */}
                         <button
                             type="submit"
                             disabled={loading}
@@ -193,7 +206,6 @@ export default function LoginPage() {
                     <p className="text-slate-500 text-xs text-center">
                         For credentials, contact the administrator
                     </p>
-
                 </div>
 
                 {/* Enhanced Decorative Elements */}

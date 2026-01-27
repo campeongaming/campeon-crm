@@ -48,6 +48,8 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     const [duration, setDuration] = useState('7d');
     const [restrictedCountries, setRestrictedCountries] = useState<string[]>([]);
     const [countryInput, setCountryInput] = useState('');
+    const [allowedCountries, setAllowedCountries] = useState<string[]>([]);
+    const [allowedCountryInput, setAllowedCountryInput] = useState('');
 
     // Config section
     const [configType, setConfigType] = useState('deposit');
@@ -56,8 +58,9 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
     const [category, setCategory] = useState('games');
     const [includeAmount, setIncludeAmount] = useState(true);
     const [capCalculation, setCapCalculation] = useState(false);
+    const [withdrawActive, setWithdrawActive] = useState(false);
     const [expiry, setExpiry] = useState('7d');
-    const [proportionsType, setProportionsType] = useState('casino');
+    const [proportionsType, setProportionsType] = useState('none');
 
     // EUR values for searching admin config tables
     const [minStakeEUR, setMinStakeEUR] = useState(0.5);
@@ -276,6 +279,46 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
         setRestrictedCountries(restrictedCountries.filter((_, i) => i !== idx));
     };
 
+    // ============ PARSE ALLOWED COUNTRIES FROM COMMA-SEPARATED INPUT ============
+    const handleAllowedCountryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const input = e.target.value.toUpperCase();
+        setAllowedCountryInput(input);
+        // Auto-parse comma-separated values
+        if (input.includes(',')) {
+            const parsed = input
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s && !allowedCountries.includes(s));
+            setAllowedCountries([...allowedCountries, ...parsed]);
+            setAllowedCountryInput('');
+        }
+    };
+
+    const handleAllowedCountryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && allowedCountryInput.trim()) {
+            const value = allowedCountryInput.trim().toUpperCase();
+            if (!allowedCountries.includes(value)) {
+                setAllowedCountries([...allowedCountries, value]);
+                setAllowedCountryInput('');
+            }
+            e.preventDefault();
+        }
+    };
+
+    const handleAllowedCountryBlur = () => {
+        if (allowedCountryInput.trim()) {
+            const value = allowedCountryInput.trim().toUpperCase();
+            if (!allowedCountries.includes(value)) {
+                setAllowedCountries([...allowedCountries, value]);
+                setAllowedCountryInput('');
+            }
+        }
+    };
+
+    const handleRemoveAllowedCountry = (idx: number) => {
+        setAllowedCountries(allowedCountries.filter((_, i) => i !== idx));
+    };
+
     // ============ FORMAT DATE/TIME ============
     const formatDateTimeForPayload = (dateTimeLocal: string): string => {
         // Input: "2026-01-04T22:00" (datetime-local format)
@@ -318,7 +361,11 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
             // Fetch proportions from admin based on selected type
             let proportionsObject = {};
-            if (proportionsType === 'casino' && adminConfig?.casino_proportions) {
+            if (proportionsType === 'none') {
+                // No proportions - empty object
+                proportionsObject = {};
+                console.log('✅ No proportions selected');
+            } else if (proportionsType === 'casino' && adminConfig?.casino_proportions) {
                 try {
                     let proportionsData = typeof adminConfig.casino_proportions === 'string'
                         ? JSON.parse(adminConfig.casino_proportions)
@@ -362,7 +409,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 category: category,
                 provider: provider,
                 brand: provider,
-                config_type: configType,
+                config_type: 'cash',
                 percentage: percentage,
                 wagering_multiplier: wageringMultiplier,
                 ...(minimumAmountEUR !== '' && minimumAmountEUR > 0 && { minimum_amount: buildCurrencyMap(minimumAmountEUR as number, 'minimum_amount') }),
@@ -373,14 +420,15 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 include_amount_on_target_wager: includeAmount,
                 cap_calculation_to_maximum: capCalculation,
                 compensate_overspending: true,
-                withdraw_active: false,
+                withdraw_active: withdrawActive,
                 restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : undefined,
+                allowed_countries: allowedCountries.length > 0 ? allowedCountries : undefined,
                 segments: segments.length > 0 ? segments : undefined,
                 schedule_type: 'period',
                 schedule_from: scheduleFrom ? formatDateTimeForPayload(scheduleFrom) : undefined,
                 schedule_to: scheduleTo ? formatDateTimeForPayload(scheduleTo) : undefined,
                 notes: notes || undefined,
-                proportions: proportionsObject,
+                ...(proportionsType !== 'none' && { proportions: proportionsObject }),
                 game: undefined,
                 ...(iterations !== '' && iterations > 0 && { trigger_iterations: iterations }),
                 config_extra: {
@@ -399,6 +447,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
             setBonusId('');
             setGameId('');
             setRestrictedCountries([]);
+            setAllowedCountries([]);
             setSegments([]);
             setErrors([]);
         } catch (err: any) {
@@ -418,7 +467,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
         <div className="space-y-5">
             {/* Header */}
             <div className="bg-gradient-to-br from-cyan-500/90 via-blue-500/90 to-indigo-500/90 p-8 rounded-2xl shadow-xl backdrop-blur-sm border border-white/10">
-                <h2 className="text-3xl font-bold text-white drop-shadow-md">🔄 Reload/Deposit Bonus</h2>
+                <h2 className="text-3xl font-bold text-white drop-shadow-md">🔄 Reload Bonus</h2>
                 <p className="text-cyan-50 mt-3 text-lg font-medium">Create reload or deposit bonuses with customizable parameters</p>
             </div>
 
@@ -432,11 +481,13 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 </div>
             )}
 
-            <div className="space-y-6">
-                {/* Bonus ID and Provider */}
-                <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg hover:border-purple-400/40 transition-all">
-                    <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-5">🏷️ Bonus Details</h3>
-                    <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+                {/* ============ BONUS SETUP ============ */}
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-6">🏷️ Bonus Setup</h3>
+
+                    {/* Bonus ID and Provider */}
+                    <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-600/30">
                         <div>
                             <label className="block text-sm text-slate-300 mb-2 font-semibold">Bonus ID *</label>
                             <input
@@ -458,163 +509,182 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                             />
                         </div>
                     </div>
-                </div>
-                {/* 📋 Segments */}
-                <div className="p-3 bg-slate-700/40 rounded border border-purple-500/40">
-                    <label className="block text-sm font-medium text-slate-100 mb-2">📋 Segments (Optional - comma separated or press Enter)</label>
-                    <div className="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            value={segmentInput}
-                            onChange={handleSegmentInputChange}
-                            onKeyDown={handleSegmentKeyDown}
-                            onBlur={handleSegmentBlur}
-                            placeholder="e.g., segment1, segment2, fast-track_system-lifecycle-version-1959"
-                            className="flex-1 px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
-                        />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {segments.map((segment, idx) => (
-                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm text-slate-100">
-                                {segment}
-                                <button
-                                    onClick={() => handleRemoveSegment(idx)}
-                                    className="text-red-400 hover:text-red-300 font-bold cursor-pointer"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
 
-                {/* 🚫 Restricted Countries */}
-                <div className="p-3 bg-slate-700/40 rounded border border-amber-500/40">
-                    <label className="block text-sm font-medium text-slate-100 mb-2">🚫 Restricted Countries (Optional - comma separated or press Enter)</label>
-                    <div className="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            value={countryInput}
-                            onChange={handleCountryInputChange}
-                            onKeyDown={handleCountryKeyDown}
-                            onBlur={handleCountryBlur}
-                            placeholder="e.g., BR, AU, NZ, TR"
-                            className="flex-1 px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
-                        />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {restrictedCountries.map((country, idx) => (
-                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-amber-900/40 border border-amber-500/40 rounded-full text-sm text-slate-100">
-                                {country}
-                                <button
-                                    onClick={() => handleRemoveCountry(idx)}
-                                    className="text-red-400 hover:text-red-300 font-bold cursor-pointer"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* ============ SCHEDULE (OPTIONAL) ============ */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-purple-500/40">
-                    <h3 className="text-lg font-semibold text-slate-100 mb-4">📅 Schedule (Optional - leave empty if not needed)</h3>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">From</label>
+                    {/* Segments */}
+                    <div className="mb-6 pb-6 border-b border-slate-600/30">
+                        <label className="block text-sm font-semibold text-slate-300 mb-3">📋 Segments (Optional)</label>
+                        <div className="flex gap-2 mb-3">
                             <input
-                                type="datetime-local"
-                                value={scheduleFrom}
-                                onChange={(e) => setScheduleFrom(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                type="text"
+                                value={segmentInput}
+                                onChange={handleSegmentInputChange}
+                                onKeyDown={handleSegmentKeyDown}
+                                onBlur={handleSegmentBlur}
+                                placeholder="Press Enter to add segment"
+                                className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
                             />
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">To</label>
-                            <input
-                                type="datetime-local"
-                                value={scheduleTo}
-                                onChange={(e) => setScheduleTo(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                            />
+                        <div className="flex flex-wrap gap-2">
+                            {segments.map((segment, idx) => (
+                                <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm text-slate-200">
+                                    {segment}
+                                    <button
+                                        onClick={() => handleRemoveSegment(idx)}
+                                        className="text-red-300 hover:text-red-100 font-bold cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="mt-4">
-                        <label className="block text-sm font-medium text-slate-100 mb-1">Timezone (Optional)</label>
-                        <input
-                            type="text"
-                            value={scheduleTimezone}
-                            onChange={(e) => setScheduleTimezone(e.target.value)}
-                            placeholder="e.g., CET, UTC, EST"
-                            className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
-                        />
+                    {/* Countries & Schedule Section */}
+                    <div className="mb-0">
+                        {/* Restricted Countries */}
+                        <div className="mb-6 pb-6 border-b border-slate-600/30">
+                            <label className="block text-sm font-semibold text-slate-300 mb-3">🚫 Restricted Countries (Optional)</label>
+                            <div className="flex gap-2 mb-3">
+                                <input
+                                    type="text"
+                                    value={countryInput}
+                                    onChange={handleCountryInputChange}
+                                    onKeyDown={handleCountryKeyDown}
+                                    onBlur={handleCountryBlur}
+                                    placeholder="e.g., BR, AU, NZ - Press Enter to add"
+                                    className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
+                                />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {restrictedCountries.map((country, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-red-900/40 border border-red-500/40 rounded-full text-sm text-red-200">
+                                        {country}
+                                        <button
+                                            onClick={() => handleRemoveCountry(idx)}
+                                            className="text-red-300 hover:text-red-100 font-bold cursor-pointer"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Allowed Countries */}
+                        <div className="mb-6 pb-6 border-b border-slate-600/30">
+                            <label className="block text-sm font-semibold text-slate-300 mb-3">✅ Allowed Countries (Optional)</label>
+                            <div className="flex gap-2 mb-3">
+                                <input
+                                    type="text"
+                                    value={allowedCountryInput}
+                                    onChange={handleAllowedCountryInputChange}
+                                    onKeyDown={handleAllowedCountryKeyDown}
+                                    onBlur={handleAllowedCountryBlur}
+                                    placeholder="e.g., SE, NO, FI - Press Enter to add"
+                                    className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
+                                />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {allowedCountries.map((country, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-green-900/40 border border-green-500/40 rounded-full text-sm text-green-200">
+                                        {country}
+                                        <button
+                                            onClick={() => handleRemoveAllowedCountry(idx)}
+                                            className="text-red-300 hover:text-red-100 font-bold cursor-pointer"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Schedule */}
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-300 mb-3">📅 Schedule (Optional)</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-2">From</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduleFrom}
+                                        onChange={(e) => setScheduleFrom(e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-2">To</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduleTo}
+                                        onChange={(e) => setScheduleTo(e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-2">Timezone</label>
+                                    <input
+                                        type="text"
+                                        value={scheduleTimezone}
+                                        onChange={(e) => setScheduleTimezone(e.target.value)}
+                                        placeholder="CET, UTC, EST"
+                                        className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 text-sm"
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {/* ============ TRIGGER ============ */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-amber-500/40">
-                    <h3 className="text-lg font-semibold text-slate-100 mb-4">🎯 Trigger</h3>
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-amber-400/20 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-amber-300 to-yellow-300 bg-clip-text text-transparent mb-6">🎯 Trigger</h3>
 
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR) - Optional</label>
-                                <input
-                                    type="number"
-                                    value={minimumAmountEUR}
-                                    onChange={(e) => setMinimumAmountEUR(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                    placeholder="Leave empty if not required"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                                />
-                            </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-300 mb-2">Min Deposit (EUR) - Optional</label>
+                            <input
+                                type="number"
+                                value={minimumAmountEUR}
+                                onChange={(e) => setMinimumAmountEUR(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                placeholder="Leave empty if not required"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
+                            />
+                        </div>
 
+                        <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Iterations (Optional)</label>
-                                <input
-                                    type="number"
-                                    value={iterations}
-                                    onChange={(e) => setIterations(e.target.value === '' ? '' : parseInt(e.target.value))}
-                                    placeholder="Leave empty if not needed"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
-                                <input
-                                    type="text"
-                                    value={configType}
-                                    onChange={(e) => setConfigType(e.target.value)}
-                                    placeholder="e.g., deposit"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Trigger Type</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Type</label>
                                 <select
                                     value={triggerType}
                                     onChange={(e) => setTriggerType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base cursor-pointer"
                                 >
-                                    <option value="deposit">Deposit</option>
-                                    <option value="external">External</option>
-                                    <option value="manual">Manual</option>
+                                    <option value="deposit">deposit</option>
+                                    <option value="external">external</option>
+                                    <option value="manual">manual</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Duration</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Duration</label>
                                 <input
                                     type="text"
                                     value={duration}
                                     onChange={(e) => setDuration(e.target.value)}
                                     placeholder="e.g., 7d"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Iterations - Optional</label>
+                                <input
+                                    type="number"
+                                    value={iterations}
+                                    onChange={(e) => setIterations(e.target.value === '' ? '' : parseInt(e.target.value))}
+                                    placeholder="Leave empty if not needed"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
                         </div>
@@ -622,37 +692,40 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                 </div>
 
                 {/* ============ CONFIG ============ */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-green-500/40">
-                    <h3 className="text-lg font-semibold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-4">⚙️ Config</h3>
+                {/* ============ CONFIG ============ */}
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-cyan-400/20 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent mb-6">⚙️ Config</h3>
 
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Percentage (%) *</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Percentage (%) *</label>
                                 <input
                                     type="number"
                                     value={percentage}
                                     onChange={(e) => setPercentage(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Wagering Multiplier (x) *</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Wagering Multiplier (x) *</label>
                                 <input
                                     type="number"
                                     value={wageringMultiplier}
                                     onChange={(e) => setWageringMultiplier(parseFloat(e.target.value))}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
+                        </div>
 
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Min Stake to Wager *</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Min Stake to Wager *</label>
                                 <select
                                     value={selectedMinStakeTable}
                                     onChange={(e) => handleMinStakeTableChange(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                                 >
                                     <option value="">-- Select Table --</option>
                                     {adminConfig?.minimum_stake_to_wager?.map(table => (
@@ -662,16 +735,16 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                                     ))}
                                 </select>
                                 {selectedMinStakeTable && (
-                                    <p className="text-xs text-slate-400 mt-1">Selected: €{minStakeEUR}</p>
+                                    <p className="text-xs text-green-400 mt-2">Selected: €{minStakeEUR}</p>
                                 )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Max Stake to Wager *</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Max Stake to Wager *</label>
                                 <select
                                     value={selectedMaxStakeTable}
                                     onChange={(e) => handleMaxStakeTableChange(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                                 >
                                     <option value="">-- Select Table --</option>
                                     {adminConfig?.maximum_stake_to_wager?.map(table => (
@@ -681,109 +754,132 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
                                     ))}
                                 </select>
                                 {selectedMaxStakeTable && (
-                                    <p className="text-xs text-slate-400 mt-1">Selected: €{maxStakeEUR}</p>
+                                    <p className="text-xs text-green-400 mt-2">Selected: €{maxStakeEUR}</p>
                                 )}
                             </div>
+                        </div>
 
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Amount (EUR) *</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Maximum Amount (EUR) *</label>
                                 <input
                                     type="number"
                                     step="1"
                                     value={maxAmountEUR}
                                     onChange={(e) => setMaxAmountEUR(parseFloat(e.target.value))}
                                     placeholder="e.g., 100"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Withdraw</label>
-                                <div className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-800/60">
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Maximum Withdraw</label>
+                                <div className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm text-base">
                                     EUR: {getMaxWithdrawMultiplier(percentage)}
                                 </div>
                             </div>
+                        </div>
 
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Category</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Category</label>
                                 <input
                                     type="text"
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
                                     placeholder="e.g., games"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
-                        </div>
 
-                        {/* Proportions Section - Radio Buttons + EUR Input */}
-                        <div className="p-3 bg-slate-700/30 rounded border border-red-500/50">
-                            <label className="block text-sm font-semibold text-slate-100 mb-3">🚫 Proportions *</label>
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Proportions Type</label>
-                                <div className="flex gap-4">
-                                    <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            checked={proportionsType === 'casino'}
-                                            onChange={() => setProportionsType('casino')}
-                                            className="mr-2 w-4 h-4"
-                                        />
-                                        🎰 Casino
-                                    </label>
-                                    <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            checked={proportionsType === 'live_casino'}
-                                            onChange={() => setProportionsType('live_casino')}
-                                            className="mr-2 w-4 h-4"
-                                        />
-                                        🎭 Live Casino
-                                    </label>
-                                </div>
-                                <p className="text-xs text-slate-400 mt-1">Proportions values come from Admin Setup</p>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Expiry</label>
+                                <input
+                                    type="text"
+                                    value={expiry}
+                                    onChange={(e) => setExpiry(e.target.value)}
+                                    placeholder="e.g., 7d"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
+                                />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={includeAmount}
-                                    onChange={(e) => setIncludeAmount(e.target.checked)}
-                                    className="mr-2 w-4 h-4"
-                                />
-                                Include Amount on Target Wager
-                            </label>
-
-                            <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={capCalculation}
-                                    onChange={(e) => setCapCalculation(e.target.checked)}
-                                    className="mr-2 w-4 h-4"
-                                />
-                                Cap Calculation to Maximum
-                            </label>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">Expiry</label>
-                            <input
-                                type="text"
-                                value={expiry}
-                                onChange={(e) => setExpiry(e.target.value)}
-                                placeholder="e.g., 7d"
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                            />
+                        {/* Proportions Section */}
+                        <div className="p-4 bg-slate-700/20 rounded-lg border border-green-400/20 mt-4">
+                            <label className="block text-sm font-semibold text-slate-300 mb-3">🎰 Proportions Type *</label>
+                            <div className="flex gap-6">
+                                <label className="flex items-center text-sm font-semibold text-slate-300 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={proportionsType === 'none'}
+                                        onChange={() => setProportionsType('none')}
+                                        className="mr-2 w-4 h-4"
+                                    />
+                                    ❌ No Proportions
+                                </label>
+                                <label className="flex items-center text-sm font-semibold text-slate-300 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={proportionsType === 'casino'}
+                                        onChange={() => setProportionsType('casino')}
+                                        className="mr-2 w-4 h-4"
+                                    />
+                                    🎰 Casino
+                                </label>
+                                <label className="flex items-center text-sm font-semibold text-slate-300 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={proportionsType === 'live_casino'}
+                                        onChange={() => setProportionsType('live_casino')}
+                                        className="mr-2 w-4 h-4"
+                                    />
+                                    🎭 Live Casino
+                                </label>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-2">Values loaded from Admin Setup</p>
                         </div>
                     </div>
+                </div>
+
+                {/* Boolean Flags */}
+                <div className="bg-slate-800 p-6 rounded-lg space-y-3">
+                    <h3 className="text-lg font-semibold text-white mb-4">⚡ Flags</h3>
+
+                    <label className="flex items-center gap-2 text-slate-300">
+                        <input
+                            type="checkbox"
+                            checked={includeAmount}
+                            onChange={(e) => setIncludeAmount(e.target.checked)}
+                            className="w-4 h-4"
+                        />
+                        Include Amount on Target Wager Calculation
+                    </label>
+
+                    <label className="flex items-center gap-2 text-slate-300">
+                        <input
+                            type="checkbox"
+                            checked={capCalculation}
+                            onChange={(e) => setCapCalculation(e.target.checked)}
+                            className="w-4 h-4"
+                        />
+                        Cap Calculation Amount to Maximum Bonus
+                    </label>
+
+                    <label className="flex items-center gap-2 text-slate-300">
+                        <input
+                            type="checkbox"
+                            checked={withdrawActive}
+                            onChange={(e) => setWithdrawActive(e.target.checked)}
+                            className="w-4 h-4"
+                        />
+                        Withdraw Active
+                    </label>
                 </div>
 
                 {/* Save Button */}
                 <button
                     onClick={handleSave}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 transition"
+                    className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-purple-500/20"
                 >
                     💾 Save Reload Bonus
                 </button>

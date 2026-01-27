@@ -60,25 +60,25 @@ def save_stable_config(config: StableConfigCreate, tab: Optional[str] = Query(No
         ).first()
 
         if existing_config:
-            # Update existing - only update fields based on tab
+            # Update existing - ONLY update the fields relevant to current tab
             if tab == 'cost':
-                # Cost tab → only update cost field
-                if config_data['cost']:
-                    existing_config.cost = config_data['cost']
-            else:
-                # Other tabs → update corresponding fields (stored in DEFAULT row)
-                if config_data['maximum_amount']:
-                    existing_config.maximum_amount = config_data['maximum_amount']
-                if config_data['minimum_amount']:
-                    existing_config.minimum_amount = config_data['minimum_amount']
-                if config_data.get('currency_unit'):
-                    existing_config.currency_unit = config_data['currency_unit']
-                if config_data['minimum_stake_to_wager']:
-                    existing_config.minimum_stake_to_wager = config_data['minimum_stake_to_wager']
-                if config_data['maximum_stake_to_wager']:
-                    existing_config.maximum_stake_to_wager = config_data['maximum_stake_to_wager']
-                if config_data['maximum_withdraw']:
-                    existing_config.maximum_withdraw = config_data['maximum_withdraw']
+                # Cost tab → only update cost field (even if empty, to allow deletion)
+                existing_config.cost = config_data['cost']
+            elif tab == 'amounts':
+                # Amounts tab → only update amounts/currency_unit fields
+                existing_config.minimum_amount = config_data['minimum_amount']
+                existing_config.maximum_amount = config_data['maximum_amount']
+                existing_config.currency_unit = config_data.get(
+                    'currency_unit', [])
+            elif tab == 'withdrawals':
+                # Withdrawals tab → only update maximum_withdraw field
+                existing_config.maximum_withdraw = config_data['maximum_withdraw']
+            elif tab == 'wager':
+                # Wager tab → only update wager fields
+                existing_config.minimum_stake_to_wager = config_data['minimum_stake_to_wager']
+                existing_config.maximum_stake_to_wager = config_data['maximum_stake_to_wager']
+            elif tab == 'proportions':
+                # Proportions tab → only update proportions fields
                 if config_data['casino_proportions']:
                     existing_config.casino_proportions = config_data['casino_proportions']
                 if config_data['live_casino_proportions']:

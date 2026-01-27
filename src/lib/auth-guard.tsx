@@ -13,18 +13,26 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const publicRoutes = ['/login'];
 
     useEffect(() => {
-        if (isLoading) return;
+        console.log('AuthGuard check:', { isLoading, isLoggedIn, pathname });
+
+        if (isLoading) {
+            console.log('Still loading auth...');
+            return;
+        }
 
         const isPublicRoute = publicRoutes.includes(pathname);
+        console.log('Public route?', isPublicRoute);
 
         // If not logged in and not on a public route, redirect to login
         if (!isLoggedIn && !isPublicRoute) {
+            console.log('Not logged in, redirecting to /login');
             router.push('/login');
         }
 
-        // If logged in and on login page, redirect to home
+        // If logged in and on login page, redirect to create
         if (isLoggedIn && pathname === '/login') {
-            router.push('/');
+            console.log('Logged in on /login, redirecting to /create');
+            router.push('/create');
         }
     }, [isLoggedIn, isLoading, pathname, router]);
 

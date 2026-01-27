@@ -28,27 +28,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Check authentication on mount
+    // Check authentication on mount and when pathname changes
     useEffect(() => {
-        const storedToken = localStorage.getItem('auth_token');
-        const storedUser = localStorage.getItem('auth_user');
+        const checkAuth = () => {
+            const storedToken = localStorage.getItem('auth_token');
+            const storedUser = localStorage.getItem('auth_user');
 
-        if (storedToken && storedUser) {
-            try {
-                const parsedUser = JSON.parse(storedUser);
-                setToken(storedToken);
-                setUser(parsedUser);
+            console.log('Auth check from context:', { hasToken: !!storedToken, hasUser: !!storedUser });
 
-                // Set auth header for future requests
-                axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-            } catch (err) {
-                // Clear invalid data
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_user');
+            if (storedToken && storedUser) {
+                try {
+                    const parsedUser = JSON.parse(storedUser);
+                    setToken(storedToken);
+                    setUser(parsedUser);
+
+                    // Set auth header for future requests
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+                    console.log('Auth restored from localStorage');
+                } catch (err) {
+                    console.log('Failed to parse stored user');
+                    // Clear invalid data
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('auth_user');
+                }
+            } else {
+                // Ensure state is cleared if no token
+                setToken(null);
+                setUser(null);
             }
-        }
 
-        setIsLoading(false);
+            setIsLoading(false);
+        };
+
+        checkAuth();
+
+        // Also listen for storage changes (in case another tab updates it)
+        window.addEventListener('storage', checkAuth);
+        return () => window.removeEventListener('storage', checkAuth);
     }, []);
 
     const logout = () => {

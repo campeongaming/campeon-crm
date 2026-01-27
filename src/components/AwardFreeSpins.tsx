@@ -45,6 +45,8 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
     const [duration, setDuration] = useState('7d');
     const [restrictedCountries, setRestrictedCountries] = useState<string[]>([]);
     const [countryInput, setCountryInput] = useState('');
+    const [allowedCountries, setAllowedCountries] = useState<string[]>([]);
+    const [allowedCountryInput, setAllowedCountryInput] = useState('');
     const [segments, setSegments] = useState<string[]>([]);
     const [segmentInput, setSegmentInput] = useState('');
 
@@ -324,6 +326,46 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
         setRestrictedCountries(restrictedCountries.filter((_, i) => i !== idx));
     };
 
+    // ============ ALLOWED COUNTRIES HANDLERS ============
+    const handleAllowedCountryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const input = e.target.value.toUpperCase();
+        setAllowedCountryInput(input);
+        // Auto-parse comma-separated values
+        if (input.includes(',')) {
+            const parsed = input
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s && !allowedCountries.includes(s));
+            setAllowedCountries([...allowedCountries, ...parsed]);
+            setAllowedCountryInput('');
+        }
+    };
+
+    const handleAllowedCountryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && allowedCountryInput.trim()) {
+            const value = allowedCountryInput.trim().toUpperCase();
+            if (!allowedCountries.includes(value)) {
+                setAllowedCountries([...allowedCountries, value]);
+                setAllowedCountryInput('');
+            }
+            e.preventDefault();
+        }
+    };
+
+    const handleAllowedCountryBlur = () => {
+        if (allowedCountryInput.trim()) {
+            const value = allowedCountryInput.trim().toUpperCase();
+            if (!allowedCountries.includes(value)) {
+                setAllowedCountries([...allowedCountries, value]);
+                setAllowedCountryInput('');
+            }
+        }
+    };
+
+    const handleRemoveAllowedCountry = (idx: number) => {
+        setAllowedCountries(allowedCountries.filter((_, i) => i !== idx));
+    };
+
     // ============ FORMAT DATE/TIME ============
     const formatDateTimeForPayload = (dateTimeLocal: string): string => {
         // Input: "2026-01-04T22:00" (datetime-local format)
@@ -394,6 +436,10 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 bonusJson.trigger.restrictedCountries = restrictedCountries;
             }
 
+            if (allowedCountries.length > 0) {
+                bonusJson.trigger.allowedCountries = allowedCountries;
+            }
+
             // Config
             const multiplierMap = buildMultiplierMap();
             const maxWithdrawMap = buildCurrencyMap(maximumWithdrawEUR, 'maximum_withdraw');
@@ -439,6 +485,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 cap_calculation_to_maximum: capCalculation,
                 withdraw_active: withdrawActive,
                 ...(restrictedCountries.length > 0 && { restricted_countries: restrictedCountries }),
+                ...(allowedCountries.length > 0 && { allowed_countries: allowedCountries }),
                 ...(segments.length > 0 && { segments: segments }),
                 notes: notes || undefined,
                 ...(scheduleFrom && scheduleTo && {
@@ -484,7 +531,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
         <div className="space-y-5">
             {/* Header */}
             <div className="bg-gradient-to-br from-cyan-500/90 via-blue-500/90 to-indigo-500/90 p-8 rounded-2xl shadow-xl backdrop-blur-sm border border-white/10">
-                <h2 className="text-3xl font-bold text-white drop-shadow-md">🎰 Award Free Spins</h2>
+                <h2 className="text-3xl font-bold text-white drop-shadow-md">🎫 Award Free Spins</h2>
                 <p className="text-cyan-50 mt-3 text-lg font-medium">Create a free spins bonus with customizable parameters</p>
             </div>
 
@@ -498,13 +545,15 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 </div>
             )}
 
-            <div className="space-y-5">
-                {/* Bonus ID and Provider */}
-                <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg hover:border-purple-400/40 transition-all">
-                    <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-5">🏷️ Bonus Details</h3>
-                    <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+                {/* Bonus Setup - All in one box */}
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-6">🏷️ Bonus Setup</h3>
+
+                    {/* Bonus ID and Provider */}
+                    <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-600/30">
                         <div>
-                            <label className="block text-sm text-slate-300 mb-2 font-semibold">Bonus ID *</label>
+                            <label className="block text-sm text-slate-300 mb-2 font-semibold">Bonus ID</label>
                             <input
                                 type="text"
                                 value={bonusId}
@@ -514,7 +563,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-slate-300 mb-2 font-semibold">Provider *</label>
+                            <label className="block text-sm text-slate-300 mb-2 font-semibold">Provider</label>
                             <select
                                 value={provider}
                                 onChange={(e) => setProvider(e.target.value)}
@@ -525,133 +574,153 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                             </select>
                         </div>
                     </div>
-                </div>
 
-                {loadingAdmin && (
-                    <div className="p-4 bg-indigo-500/10 border border-indigo-400/40 rounded-xl backdrop-blur-sm">
-                        <p className="text-xs text-indigo-300">📡 Fetching admin pricing...</p>
-                    </div>
-                )}
-
-                {/* 📋 Segments */}
-                <div className="p-3 bg-slate-700/40 rounded border border-purple-500/40">
-                    <label className="block text-sm font-medium text-slate-100 mb-2">📋 Segments (Optional - comma separated or press Enter)</label>
-                    <div className="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            value={segmentInput}
-                            onChange={handleSegmentInputChange}
-                            onKeyDown={handleSegmentKeyDown}
-                            onBlur={handleSegmentBlur}
-                            placeholder="e.g., segment1, segment2, fast-track_system-lifecycle-version-1959"
-                            className="flex-1 px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
-                        />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {segments.map((segment, idx) => (
-                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm">
-                                {segment}
-                                <button
-                                    onClick={() => handleRemoveSegment(idx)}
-                                    className="text-red-300 hover:text-red-800 font-bold cursor-pointer"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 🚫 Restricted Countries */}
-                <div className="p-3 bg-slate-700/40 rounded border border-amber-500/40">
-                    <label className="block text-sm font-medium text-slate-100 mb-2">🚫 Restricted Countries (Optional - comma separated or press Enter)</label>
-                    <div className="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            value={countryInput}
-                            onChange={handleCountryInputChange}
-                            onKeyDown={handleCountryKeyDown}
-                            onBlur={handleCountryBlur}
-                            placeholder="e.g., BR, AU, NZ, TR"
-                            className="flex-1 px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 placeholder-slate-500"
-                        />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {restrictedCountries.map((country, idx) => (
-                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm">
-                                {country}
-                                <button
-                                    onClick={() => handleRemoveCountry(idx)}
-                                    className="text-red-300 hover:text-red-800 font-bold cursor-pointer"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* ============ SCHEDULE (OPTIONAL) ============ */}
-                <div className="p-6 bg-slate-700/30 rounded-xl border border-purple-400/30 backdrop-blur-sm shadow-lg">
-                    <h3 className="text-xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent mb-5">📅 Schedule (Optional - leave empty if not needed)</h3>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-base font-semibold text-slate-200 mb-2">From</label>
+                    {/* Segments */}
+                    <div className="mb-6 pb-6 border-b border-slate-600/30">
+                        <label className="block text-sm font-semibold text-slate-300 mb-3">📋 Segments (Optional)</label>
+                        <div className="flex gap-2 mb-3">
                             <input
-                                type="datetime-local"
-                                value={scheduleFrom}
-                                onChange={(e) => setScheduleFrom(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-500/50 rounded-lg text-slate-50 bg-slate-800/60 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
+                                type="text"
+                                value={segmentInput}
+                                onChange={handleSegmentInputChange}
+                                onKeyDown={handleSegmentKeyDown}
+                                onBlur={handleSegmentBlur}
+                                placeholder="Press Enter to add segment"
+                                className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
                             />
                         </div>
-
-                        <div>
-                            <label className="block text-base font-semibold text-slate-200 mb-2">To</label>
-                            <input
-                                type="datetime-local"
-                                value={scheduleTo}
-                                onChange={(e) => setScheduleTo(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-500/50 rounded-lg text-slate-50 bg-slate-800/60 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                            />
+                        <div className="flex flex-wrap gap-2">
+                            {segments.map((segment, idx) => (
+                                <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-blue-900/40 border border-blue-500/40 rounded-full text-sm">
+                                    {segment}
+                                    <button
+                                        onClick={() => handleRemoveSegment(idx)}
+                                        className="text-red-300 hover:text-red-800 font-bold cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="mt-4">
-                        <label className="block text-base font-semibold text-slate-200 mb-2">Timezone (Optional)</label>
-                        <input
-                            type="text"
-                            value={scheduleTimezone}
-                            onChange={(e) => setScheduleTimezone(e.target.value)}
-                            placeholder="e.g., CET, UTC, EST"
-                            className="w-full px-4 py-3 border border-slate-500/50 rounded-lg text-slate-50 bg-slate-800/60 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        />
+                    {/* Restricted Countries */}
+                    <div className="mb-6 pb-6 border-b border-slate-600/30">
+                        <label className="block text-sm font-semibold text-slate-300 mb-3">🚫 Restricted Countries (Optional)</label>
+                        <div className="flex gap-2 mb-3">
+                            <input
+                                type="text"
+                                value={countryInput}
+                                onChange={handleCountryInputChange}
+                                onKeyDown={handleCountryKeyDown}
+                                onBlur={handleCountryBlur}
+                                placeholder="e.g., BR, AU, NZ - Press Enter to add"
+                                className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
+                            />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {restrictedCountries.map((country, idx) => (
+                                <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-red-900/40 border border-red-500/40 rounded-full text-sm text-red-200">
+                                    {country}
+                                    <button
+                                        onClick={() => handleRemoveCountry(idx)}
+                                        className="text-red-300 hover:text-red-100 font-bold cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Allowed Countries */}
+                    <div className="mb-6 pb-6 border-b border-slate-600/30">
+                        <label className="block text-sm font-semibold text-slate-300 mb-3">✅ Allowed Countries (Optional)</label>
+                        <div className="flex gap-2 mb-3">
+                            <input
+                                type="text"
+                                value={allowedCountryInput}
+                                onChange={handleAllowedCountryInputChange}
+                                onKeyDown={handleAllowedCountryKeyDown}
+                                onBlur={handleAllowedCountryBlur}
+                                placeholder="e.g., DE, SE, NO - Press Enter to add"
+                                className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
+                            />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {allowedCountries.map((country, idx) => (
+                                <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-green-900/40 border border-green-500/40 rounded-full text-sm text-green-200">
+                                    {country}
+                                    <button
+                                        onClick={() => handleRemoveAllowedCountry(idx)}
+                                        className="text-green-300 hover:text-green-100 font-bold cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Schedule */}
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-300 mb-3">📅 Schedule (Optional)</label>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-2">From</label>
+                                <input
+                                    type="datetime-local"
+                                    value={scheduleFrom}
+                                    onChange={(e) => setScheduleFrom(e.target.value)}
+                                    className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-2">To</label>
+                                <input
+                                    type="datetime-local"
+                                    value={scheduleTo}
+                                    onChange={(e) => setScheduleTo(e.target.value)}
+                                    className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-2">Timezone</label>
+                                <input
+                                    type="text"
+                                    value={scheduleTimezone}
+                                    onChange={(e) => setScheduleTimezone(e.target.value)}
+                                    placeholder="CET, UTC, EST"
+                                    className="w-full px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 text-sm"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {/* ============ TRIGGER ============ */}
-                <div className="p-6 bg-slate-700/30 rounded-xl border border-amber-400/30 backdrop-blur-sm shadow-lg">
-                    <h3 className="text-xl font-bold bg-gradient-to-r from-amber-300 to-yellow-300 bg-clip-text text-transparent mb-5">🎯 Trigger</h3>
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-amber-400/20 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-amber-300 to-yellow-300 bg-clip-text text-transparent mb-6">🎯 Trigger</h3>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">Min Deposit (EUR) - Optional</label>
+                            <label className="block text-sm font-semibold text-slate-300 mb-2">Min Deposit (EUR) - Optional</label>
                             <input
                                 type="number"
                                 value={minimumAmountEUR}
                                 onChange={(e) => setMinimumAmountEUR(e.target.value === '' ? '' : parseFloat(e.target.value))}
                                 placeholder="Leave empty if not required"
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Type</label>
                                 <select
                                     value={triggerType}
                                     onChange={(e) => setTriggerType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base cursor-pointer"
                                 >
                                     <option value="deposit">Deposit</option>
                                     <option value="external">External</option>
@@ -660,24 +729,24 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Duration</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Duration</label>
                                 <input
                                     type="text"
                                     value={duration}
                                     onChange={(e) => setDuration(e.target.value)}
                                     placeholder="e.g., 7d"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Iterations - Optional</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Iterations - Optional</label>
                                 <input
                                     type="number"
                                     value={iterations}
                                     onChange={(e) => setIterations(e.target.value === '' ? '' : parseInt(e.target.value))}
                                     placeholder="Leave empty if not needed"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
                         </div>
@@ -685,13 +754,13 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                 </div>
 
                 {/* ============ CONFIG ============ */}
-                <div className="p-4 bg-slate-700/40 rounded-lg border border-green-500/40">
-                    <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">⚙️ Config</h3>
+                <div className="p-6 bg-slate-700/20 rounded-xl border border-cyan-400/20 backdrop-blur-sm shadow-lg">
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent mb-6">⚙️ Config</h3>
 
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Cost (EUR) *
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Cost (EUR) *
                                     {loadingAdmin && <span className="text-xs text-indigo-400 ml-2">Loading table...</span>}
                                 </label>
                                 <input
@@ -699,29 +768,29 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                                     value={costEUR}
                                     onChange={(e) => handleCostChange(parseFloat(e.target.value))}
                                     step="0.01"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">💡 Enter cost to auto-load pricing table</p>
+                                <p className="text-xs text-slate-400 mt-1">💡 Enter cost to auto-load pricing table</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Maximum Bets (EUR)</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Maximum Bets (EUR)</label>
                                 <input
                                     type="number"
                                     value={maximumBetsEUR}
                                     onChange={(e) => setMaximumBetsEUR(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                    placeholder="e.g. 300"
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    placeholder="e.g., 300"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">Max Withdraw (EUR) *</label>
+                            <label className="block text-sm font-semibold text-slate-300 mb-2">Max Withdraw (EUR) *</label>
                             <select
                                 value={selectedMaxWithdrawTable}
                                 onChange={(e) => handleMaxWithdrawTableChange(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                             >
                                 <option value="">-- Select Max Withdraw Table --</option>
                                 {adminConfig && adminConfig.maximum_withdraw && adminConfig.maximum_withdraw.map(table => (
@@ -731,15 +800,15 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                                 ))}
                             </select>
                             {selectedMaxWithdrawTable && (
-                                <div className="text-xs text-green-400 mt-1">
+                                <div className="text-xs text-green-400 mt-2">
                                     Selected: €{maximumWithdrawEUR.toFixed(2)}
                                 </div>
                             )}
                         </div>
 
                         {/* Up To Feature */}
-                        <div className="p-3 bg-slate-700/40 rounded border border-green-500/40 mt-4">
-                            <label className="flex items-center text-sm font-medium text-slate-100 mb-4 cursor-pointer">
+                        <div className="p-4 bg-slate-700/20 rounded-lg border border-green-400/20 mt-4">
+                            <label className="flex items-center text-sm font-semibold text-slate-300 mb-3 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={upTo}
@@ -750,14 +819,14 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                             </label>
 
                             {upTo && (
-                                <div className="mt-4 p-3 bg-slate-800/50 rounded border border-green-500/40">
-                                    <label className="block text-sm font-medium text-slate-100 mb-1">Free Spins for each EURO deposited</label>
+                                <div className="mt-3 p-3 bg-slate-800/40 rounded-lg border border-green-400/20">
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Free Spins per EURO deposited</label>
                                     <input
                                         type="number"
                                         value={upToFsPerEuro}
                                         onChange={(e) => setUpToFsPerEuro(Number(e.target.value) || 1)}
                                         step="0.1"
-                                        className="w-full px-3 py-2 border border-slate-600 rounded text-slate-100 bg-slate-900/60"
+                                        className="w-full px-4 py-2 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 focus:border-green-400 focus:ring-1 focus:ring-green-400/30"
                                     />
                                 </div>
                             )}
@@ -765,77 +834,84 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Brand</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Brand</label>
                                 <input
                                     type="text"
                                     value={brand}
                                     onChange={(e) => setBrand(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Type</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Type</label>
                                 <input
                                     type="text"
                                     value={configType}
                                     onChange={(e) => setConfigType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                                 />
                             </div>
+                        </div>
 
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-100 mb-1">Category</label>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Category</label>
                                 <select
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                                 >
                                     <option value="games">Games</option>
                                     <option value="live_casino">Live Casino</option>
                                     <option value="sports_book">Sports Book</option>
                                 </select>
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Game</label>
+                                <input
+                                    type="text"
+                                    value={game}
+                                    onChange={(e) => setGame(e.target.value)}
+                                    placeholder="e.g., Bigger Bass Blizzard"
+                                    className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
+                                />
+                            </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">Game Name *</label>
-                            <input
-                                type="text"
-                                value={game}
-                                onChange={(e) => setGame(e.target.value)}
-                                placeholder="e.g., Bigger Bass Blizzard - Christmas Catch"
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-100 mb-1">Expiry</label>
+                            <label className="block text-sm font-semibold text-slate-300 mb-2">Expiry</label>
                             <input
                                 type="text"
                                 value={expiry}
                                 onChange={(e) => setExpiry(e.target.value)}
                                 placeholder="e.g., 7d"
-                                className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-900/60 appearance-none cursor-pointer"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                             />
                         </div>
-
-                        <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={withdrawActive}
-                                onChange={(e) => setWithdrawActive(e.target.checked)}
-                                className="mr-2 w-4 h-4"
-                            />
-                            Withdraw Active
-                        </label>
                     </div>
+                </div>
+
+                {/* Boolean Flags */}
+                <div className="bg-slate-800 p-6 rounded-lg space-y-3">
+                    <h3 className="text-lg font-semibold text-white mb-4">⚡ Flags</h3>
+
+                    <label className="flex items-center gap-2 text-slate-300">
+                        <input
+                            type="checkbox"
+                            checked={withdrawActive}
+                            onChange={(e) => setWithdrawActive(e.target.checked)}
+                            className="w-4 h-4"
+                        />
+                        Withdraw Active
+                    </label>
                 </div>
 
                 {/* Save Button */}
                 <button
                     onClick={handleSave}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 transition"
+                    className="w-full px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-purple-500/20"
                 >
                     💾 Save Free Spins Bonus
                 </button>

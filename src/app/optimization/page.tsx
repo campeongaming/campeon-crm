@@ -4,6 +4,7 @@ import OptimizationTeam from '@/components/OptimizationTeam';
 import Navigation from '@/components/Navigation';
 
 export default function OptimizationPage() {
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
             <div className="w-full px-10 py-10">

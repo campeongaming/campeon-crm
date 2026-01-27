@@ -44,12 +44,12 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
     const [percentage, setPercentage] = useState(100);
     const [wageringMultiplier, setWageringMultiplier] = useState(15);
     const [category, setCategory] = useState('games');
-    const [compensateOverspending, setCompensateOverspending] = useState(true);
+    const [compensateOverspending, setCompensateOverspending] = useState(false);
     const [includeAmount, setIncludeAmount] = useState(false);
     const [capCalculation, setCapCalculation] = useState(false);
     const [withdrawActive, setWithdrawActive] = useState(false);
     const [expiry, setExpiry] = useState('7d');
-    const [proportionsType, setProportionsType] = useState('casino');
+    const [proportionsType, setProportionsType] = useState('none');
 
     // EUR values for searching admin config tables
     const [maxAmountEUR, setMaxAmountEUR] = useState(500);
@@ -61,8 +61,10 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
     const [triggerMinimumAmountEUR, setTriggerMinimumAmountEUR] = useState<number | ''>('');
     const [triggerDuration, setTriggerDuration] = useState('7d');
     const [restrictedCountries, setRestrictedCountries] = useState<string[]>([]);
-    const [triggerCategories, setTriggerCategories] = useState('LIVE_CASINO');
     const [countryInput, setCountryInput] = useState('');
+    const [allowedCountries, setAllowedCountries] = useState<string[]>([]);
+    const [allowedCountryInput, setAllowedCountryInput] = useState('');
+    const [triggerCategories, setTriggerCategories] = useState('LIVE_CASINO');
 
     // Validation
     const [errors, setErrors] = useState<string[]>([]);
@@ -199,6 +201,45 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
         setRestrictedCountries(restrictedCountries.filter((_, i) => i !== idx));
     };
 
+    // ============ PARSE ALLOWED COUNTRIES FROM COMMA-SEPARATED INPUT ============
+    const handleAllowedCountryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const input = e.target.value.toUpperCase();
+        setAllowedCountryInput(input);
+        if (input.includes(',')) {
+            const parsed = input
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s && !allowedCountries.includes(s));
+            setAllowedCountries([...allowedCountries, ...parsed]);
+            setAllowedCountryInput('');
+        }
+    };
+
+    const handleAllowedCountryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && allowedCountryInput.trim()) {
+            const value = allowedCountryInput.trim().toUpperCase();
+            if (!allowedCountries.includes(value)) {
+                setAllowedCountries([...allowedCountries, value]);
+                setAllowedCountryInput('');
+            }
+            e.preventDefault();
+        }
+    };
+
+    const handleAllowedCountryBlur = () => {
+        if (allowedCountryInput.trim()) {
+            const value = allowedCountryInput.trim().toUpperCase();
+            if (!allowedCountries.includes(value)) {
+                setAllowedCountries([...allowedCountries, value]);
+                setAllowedCountryInput('');
+            }
+        }
+    };
+
+    const handleRemoveAllowedCountry = (idx: number) => {
+        setAllowedCountries(allowedCountries.filter((_, i) => i !== idx));
+    };
+
     // ============ VALIDATION ============
     const validateForm = (): boolean => {
         const newErrors: string[] = [];
@@ -239,7 +280,11 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
 
             // Fetch proportions from admin based on selected type
             let proportionsObject = {};
-            if (proportionsType === 'casino' && adminConfig?.casino_proportions) {
+            if (proportionsType === 'none') {
+                // No proportions - empty object
+                proportionsObject = {};
+                console.log('✅ No proportions selected');
+            } else if (proportionsType === 'casino' && adminConfig?.casino_proportions) {
                 try {
                     let proportionsData = typeof adminConfig.casino_proportions === 'string'
                         ? JSON.parse(adminConfig.casino_proportions)
@@ -283,6 +328,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                 trigger_duration: triggerDuration,
                 ...(triggerMinimumMap && { minimum_amount: triggerMinimumMap }),
                 restricted_countries: restrictedCountries.length > 0 ? restrictedCountries : undefined,
+                allowed_countries: allowedCountries.length > 0 ? allowedCountries : undefined,
                 segments: undefined,
                 schedule_type: 'period',
                 schedule_from: undefined,
@@ -303,7 +349,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                 brand: provider,
                 config_type: configType,
                 game: undefined,
-                proportions: proportionsObject,
+                ...(proportionsType !== 'none' && { proportions: proportionsObject }),
                 config_extra: {
                     category,
                     ...(triggerCategories.trim() && { trigger_categories: triggerCategories })
@@ -351,9 +397,11 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
             )}
 
             {/* ID and Provider */}
-            <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg hover:border-purple-400/40 transition-all">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-5">🏷️ Bonus Details</h3>
-                <div className="grid grid-cols-2 gap-4">
+            <div className="p-6 bg-slate-700/20 rounded-xl border border-purple-400/20 backdrop-blur-sm shadow-lg">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent mb-6">🏷️ Bonus Details</h3>
+
+                {/* ID and Provider */}
+                <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-600/30">
                     <div>
                         <label className="block text-sm text-slate-300 mb-2 font-semibold">Bonus ID *</label>
                         <input
@@ -375,18 +423,74 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                         />
                     </div>
                 </div>
-            </div>
 
-            {/* Schedule (Optional) */}
-            <div className="p-6 bg-slate-700/20 rounded-xl border border-cyan-400/20 backdrop-blur-sm shadow-lg hover:border-cyan-400/40 transition-all">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent mb-5">📅 Schedule</h3>
-                <div className="space-y-5">
-                    <div>
+                {/* Restricted Countries */}
+                <div className="mb-6 pb-6 border-b border-slate-600/30">
+                    <label className="block text-sm font-semibold text-slate-300 mb-3">🚫 Restricted Countries (Optional)</label>
+                    <div className="flex gap-2 mb-3">
+                        <input
+                            type="text"
+                            value={countryInput}
+                            onChange={handleCountryInputChange}
+                            onKeyDown={handleCountryKeyDown}
+                            onBlur={handleCountryBlur}
+                            placeholder="e.g., BR, AU, NZ - Press Enter to add"
+                            className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {restrictedCountries.map((country, idx) => (
+                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-red-900/40 border border-red-500/40 rounded-full text-sm text-red-200">
+                                {country}
+                                <button
+                                    onClick={() => handleRemoveCountry(idx)}
+                                    className="text-red-300 hover:text-red-100 font-bold cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Allowed Countries */}
+                <div className="mb-6 pb-6 border-b border-slate-600/30">
+                    <label className="block text-sm font-semibold text-slate-300 mb-3">✅ Allowed Countries (Optional)</label>
+                    <div className="flex gap-2 mb-3">
+                        <input
+                            type="text"
+                            value={allowedCountryInput}
+                            onChange={handleAllowedCountryInputChange}
+                            onKeyDown={handleAllowedCountryKeyDown}
+                            onBlur={handleAllowedCountryBlur}
+                            placeholder="e.g., SE, NO, FI - Press Enter to add"
+                            className="flex-1 px-4 py-2 border border-slate-600 rounded-lg text-slate-100 bg-slate-900/60 placeholder-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30"
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {allowedCountries.map((country, idx) => (
+                            <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-green-900/40 border border-green-500/40 rounded-full text-sm text-green-200">
+                                {country}
+                                <button
+                                    onClick={() => handleRemoveAllowedCountry(idx)}
+                                    className="text-red-300 hover:text-red-100 font-bold cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Schedule */}
+                <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-3">📅 Schedule (Optional)</label>
+                    <div className="mb-4">
                         <label className="block text-sm text-slate-300 mb-2 font-semibold">Type</label>
                         <select
                             value={scheduleType}
                             onChange={(e) => setScheduleType(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 focus:outline-none transition-all text-base cursor-pointer"
                         >
                             <option value="day">Day of Week</option>
                             <option value="date">Date</option>
@@ -427,7 +531,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                                 value={scheduleValue.join(', ')}
                                 onChange={(e) => setScheduleValue(e.target.value.split(',').map(d => d.trim()))}
                                 placeholder="e.g., 01, 15, 25"
-                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 focus:outline-none transition-all text-base"
                             />
                         </div>
                     )}
@@ -440,7 +544,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                                 value={scheduleValue[0] || ''}
                                 onChange={(e) => setScheduleValue([e.target.value])}
                                 placeholder="e.g., 0 0 9 ? * * *"
-                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
+                                className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 focus:outline-none transition-all text-base"
                             />
                         </div>
                     )}
@@ -452,16 +556,16 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                             value={scheduleTimezone}
                             onChange={(e) => setScheduleTimezone(e.target.value)}
                             placeholder="e.g., CET, UTC, EST"
-                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
                 </div>
             </div>
 
             {/* ============ TRIGGER SECTION ============ */}
-            <div className="p-6 bg-slate-700/20 rounded-xl border border-orange-400/20 backdrop-blur-sm shadow-lg hover:border-orange-400/40 transition-all">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-orange-300 to-red-300 bg-clip-text text-transparent mb-5">🎯 Trigger</h3>
-                <div className="space-y-5">
+            <div className="p-6 bg-slate-700/20 rounded-xl border border-amber-400/20 backdrop-blur-sm shadow-lg">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-amber-300 to-yellow-300 bg-clip-text text-transparent mb-6">🎯 Trigger</h3>
+                <div className="space-y-4">
 
                     {/* Calculation */}
                     <div>
@@ -469,7 +573,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                         <select
                             value={triggerCalculation}
                             onChange={(e) => setTriggerCalculation(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30 focus:outline-none transition-all text-base cursor-pointer"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base cursor-pointer"
                         >
                             <option value="losses">Losses</option>
                             <option value="winnings">Winnings</option>
@@ -486,7 +590,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                             value={triggerMinimumAmountEUR}
                             onChange={(e) => setTriggerMinimumAmountEUR(e.target.value === '' ? '' : Number(e.target.value))}
                             placeholder="Leave empty if not required"
-                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30 focus:outline-none transition-all text-base"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                         />
                         <p className="text-xs text-slate-400 mt-1">Will fetch all currencies from admin config if provided</p>
                     </div>
@@ -499,37 +603,8 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                             value={triggerDuration}
                             onChange={(e) => setTriggerDuration(e.target.value)}
                             placeholder="e.g., 7d, 30d, 1h"
-                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30 focus:outline-none transition-all text-base"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                         />
-                    </div>
-
-                    {/* Restricted Countries */}
-                    <div>
-                        <label className="block text-sm text-slate-300 mb-2 font-semibold">🚫 Restricted Countries (Optional)</label>
-                        <div className="flex gap-2 mb-3">
-                            <input
-                                type="text"
-                                value={countryInput}
-                                onChange={handleCountryInputChange}
-                                onKeyDown={handleCountryKeyDown}
-                                onBlur={handleCountryBlur}
-                                placeholder="e.g., BR, AU, NZ (comma-separated)"
-                                className="flex-1 px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30 focus:outline-none transition-all text-base"
-                            />
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {restrictedCountries.map((country, idx) => (
-                                <div key={idx} className="flex items-center gap-1 px-3 py-1 bg-orange-900/40 border border-orange-500/40 rounded-full text-sm text-slate-100">
-                                    {country}
-                                    <button
-                                        onClick={() => handleRemoveCountry(idx)}
-                                        className="text-red-400 hover:text-red-300 font-bold cursor-pointer"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Categories */}
@@ -540,7 +615,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                             value={triggerCategories}
                             onChange={(e) => setTriggerCategories(e.target.value)}
                             placeholder="e.g., (LIVE_CASINO), (SLOT_GAMES)"
-                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30 focus:outline-none transition-all text-base"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
 
@@ -548,71 +623,71 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
             </div>
 
             {/* Main Configuration */}
-            <div className="bg-slate-800 p-6 rounded-lg space-y-4">
-                <h3 className="text-lg font-semibold text-white">⚙️ Configuration</h3>
+            <div className="p-6 bg-slate-700/20 rounded-xl border border-cyan-400/20 backdrop-blur-sm shadow-lg">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent mb-6">⚙️ Config</h3>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm text-slate-300 mb-1">Type</label>
+                        <label className="block text-sm text-slate-300 mb-2 font-semibold">Type</label>
                         <input
                             type="text"
                             value={configType}
                             onChange={(e) => setConfigType(e.target.value)}
                             placeholder="e.g., deposit"
-                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-slate-300 mb-1">Category</label>
+                        <label className="block text-sm text-slate-300 mb-2 font-semibold">Category</label>
                         <input
                             type="text"
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
                             placeholder="e.g., games"
-                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm text-slate-300 mb-1">Percentage (%)</label>
+                        <label className="block text-sm text-slate-300 mb-2 font-semibold">Percentage (%)</label>
                         <input
                             type="number"
                             value={percentage}
                             onChange={(e) => setPercentage(Number(e.target.value))}
-                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-slate-300 mb-1">Wagering Multiplier</label>
+                        <label className="block text-sm text-slate-300 mb-2 font-semibold">Wagering Multiplier</label>
                         <input
                             type="number"
                             value={wageringMultiplier}
                             onChange={(e) => setWageringMultiplier(Number(e.target.value))}
-                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-sm text-slate-300 mb-1">Maximum Amount (EUR)</label>
+                    <label className="block text-sm text-slate-300 mb-2 font-semibold">Maximum Amount (EUR)</label>
                     <input
                         type="number"
                         value={maxAmountEUR}
                         onChange={(e) => setMaxAmountEUR(Number(e.target.value))}
-                        className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                        className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                     />
                     <p className="text-xs text-slate-400 mt-1">Will fetch all currencies from admin config</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm text-slate-300 mb-1">Min Stake to Wager (EUR)</label>
+                        <label className="block text-sm text-slate-300 mb-2 font-semibold">Min Stake to Wager (EUR)</label>
                         <select
                             value={minStakeEUR}
                             onChange={(e) => setMinStakeEUR(Number(e.target.value))}
-                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                         >
                             <option value="">-- Select Min Stake --</option>
                             {adminConfig?.minimum_stake_to_wager?.map((table) => (
@@ -626,11 +701,11 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                         )}
                     </div>
                     <div>
-                        <label className="block text-sm text-slate-300 mb-1">Max Stake to Wager (EUR)</label>
+                        <label className="block text-sm text-slate-300 mb-2 font-semibold">Max Stake to Wager (EUR)</label>
                         <select
                             value={maxStakeEUR}
                             onChange={(e) => setMaxStakeEUR(Number(e.target.value))}
-                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                            className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base cursor-pointer"
                         >
                             <option value="">-- Select Max Stake --</option>
                             {adminConfig?.maximum_stake_to_wager?.map((table) => (
@@ -646,21 +721,59 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                 </div>
 
                 <div>
-                    <label className="block text-sm text-slate-300 mb-1">Maximum Withdraw</label>
-                    <div className="w-full px-3 py-2 border border-slate-600 rounded-md text-slate-100 bg-slate-800/60">
+                    <label className="block text-sm text-slate-300 mb-2 font-semibold">Maximum Withdraw</label>
+                    <div className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm text-base">
                         EUR: 5
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-sm text-slate-300 mb-1">Expiry</label>
+                    <label className="block text-sm text-slate-300 mb-2 font-semibold">Expiry</label>
                     <input
                         type="text"
                         value={expiry}
                         onChange={(e) => setExpiry(e.target.value)}
                         placeholder="e.g., 7d"
-                        className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                        className="w-full px-4 py-3 border border-slate-500/40 rounded-lg text-slate-100 bg-slate-800/50 backdrop-blur-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 focus:outline-none transition-all text-base"
                     />
+                </div>
+
+                {/* Proportions Section - Radio Buttons */}
+                <div className="p-3 bg-slate-700/30 rounded border border-cyan-400/20 mt-4">
+                    <label className="block text-sm font-semibold text-slate-300 mb-3">🎰 Proportions *</label>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">Proportions Type</label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center text-sm font-medium text-slate-300 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    checked={proportionsType === 'none'}
+                                    onChange={() => setProportionsType('none')}
+                                    className="mr-2 w-4 h-4"
+                                />
+                                ❌ No Proportions
+                            </label>
+                            <label className="flex items-center text-sm font-medium text-slate-300 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    checked={proportionsType === 'casino'}
+                                    onChange={() => setProportionsType('casino')}
+                                    className="mr-2 w-4 h-4"
+                                />
+                                🎰 Casino
+                            </label>
+                            <label className="flex items-center text-sm font-medium text-slate-300 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    checked={proportionsType === 'live_casino'}
+                                    onChange={() => setProportionsType('live_casino')}
+                                    className="mr-2 w-4 h-4"
+                                />
+                                🎭 Live Casino
+                            </label>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2">Proportions values come from Admin Setup</p>
+                    </div>
                 </div>
             </div>
 
@@ -671,11 +784,11 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                 <label className="flex items-center gap-2 text-slate-300">
                     <input
                         type="checkbox"
-                        checked={compensateOverspending}
-                        onChange={(e) => setCompensateOverspending(e.target.checked)}
+                        checked={withdrawActive}
+                        onChange={(e) => setWithdrawActive(e.target.checked)}
                         className="w-4 h-4"
                     />
-                    Compensate Overspending
+                    Withdraw Active
                 </label>
 
                 <label className="flex items-center gap-2 text-slate-300">
@@ -697,45 +810,6 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
                     />
                     Cap Calculation Amount to Maximum Bonus
                 </label>
-
-                <label className="flex items-center gap-2 text-slate-300">
-                    <input
-                        type="checkbox"
-                        checked={withdrawActive}
-                        onChange={(e) => setWithdrawActive(e.target.checked)}
-                        className="w-4 h-4"
-                    />
-                    Withdraw Active
-                </label>
-            </div>
-
-            {/* Proportions Section - Radio Buttons */}
-            <div className="p-3 bg-slate-700/30 rounded border border-red-500/50">
-                <label className="block text-sm font-semibold text-slate-100 mb-3">🎰 Proportions *</label>
-                <div>
-                    <label className="block text-sm font-medium text-slate-100 mb-1">Proportions Type</label>
-                    <div className="flex gap-4">
-                        <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                            <input
-                                type="radio"
-                                checked={proportionsType === 'casino'}
-                                onChange={() => setProportionsType('casino')}
-                                className="mr-2 w-4 h-4"
-                            />
-                            🎰 Casino
-                        </label>
-                        <label className="flex items-center text-sm font-medium text-slate-100 cursor-pointer">
-                            <input
-                                type="radio"
-                                checked={proportionsType === 'live_casino'}
-                                onChange={() => setProportionsType('live_casino')}
-                                className="mr-2 w-4 h-4"
-                            />
-                            🎭 Live Casino
-                        </label>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">Proportions values come from Admin Setup</p>
-                </div>
             </div>
 
             {/* Save Button */}

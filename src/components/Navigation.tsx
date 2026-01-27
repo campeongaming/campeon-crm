@@ -6,11 +6,11 @@ import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 
 const tabs = [
-    { id: 'admin', label: '⚙️ Admin Setup', path: '/admin', active: 'from-amber-600 to-amber-700', glow: 'shadow-amber-500/30' },
-    { id: 'browse', label: '📅 Browse Bonuses', path: '/browse', active: 'from-cyan-600 to-cyan-700', glow: 'shadow-cyan-500/30' },
-    { id: 'create', label: '🎰 Create Bonus', path: '/create', active: 'from-blue-600 to-blue-700', glow: 'shadow-blue-500/30' },
-    { id: 'translation', label: '🌐 Translation Team', path: '/translation', active: 'from-green-600 to-green-700', glow: 'shadow-green-500/30' },
-    { id: 'optimization', label: '📊 Optimization Team', path: '/optimization', active: 'from-purple-600 to-purple-700', glow: 'shadow-purple-500/30' },
+    { id: 'admin', label: '⚙️ Admin Setup', path: '/admin' },
+    { id: 'browse', label: '📅 Browse Bonuses', path: '/browse' },
+    { id: 'create', label: '🎰 Create Bonus', path: '/create' },
+    { id: 'translation', label: '🌐 Translation Team', path: '/translation' },
+    { id: 'optimization', label: '📊 Optimization Team', path: '/optimization' },
 ] as const;
 
 interface NavigationProps {
@@ -18,7 +18,7 @@ interface NavigationProps {
 }
 
 export default function Navigation({ activeTab }: NavigationProps) {
-    const tabBase = 'px-6 py-3 text-sm md:text-base font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-white/30 shadow-sm';
+    const tabBase = 'px-5 py-2.5 text-sm md:text-base font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-purple-500/30 shadow-sm border active:shadow-none active:scale-95 backdrop-blur-sm';
     const router = useRouter();
     const { user, logout, isAdmin } = useAuth();
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -29,9 +29,9 @@ export default function Navigation({ activeTab }: NavigationProps) {
     };
 
     return (
-        <div className="flex justify-between items-center gap-3 mb-8 pb-4 pt-2 border-b border-slate-700/60 flex-wrap">
+        <div className="flex justify-between items-center gap-3 mb-8 pb-4 pt-2 border-b border-slate-700/40 flex-wrap">
             {/* Tabs */}
-            <div className="flex gap-3 overflow-x-auto">
+            <div className="flex gap-2 overflow-x-auto">
                 {tabs.map((t) => {
                     const isActive = activeTab === t.id;
                     return (
@@ -42,8 +42,8 @@ export default function Navigation({ activeTab }: NavigationProps) {
                                 tabBase,
                                 'whitespace-nowrap',
                                 isActive
-                                    ? `bg-gradient-to-r ${t.active} text-white shadow-lg ${t.glow}`
-                                    : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700/80 hover:text-slate-50 hover:shadow-md',
+                                    ? `bg-gradient-to-r from-purple-500/40 to-blue-500/40 text-white border-purple-400/40 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30`
+                                    : 'bg-slate-800/40 text-slate-300 border-slate-600/30 hover:bg-slate-700/50 hover:text-slate-100 hover:border-slate-500/50 hover:shadow-md',
                             ].join(' ')}
                         >
                             {t.label}
@@ -68,12 +68,11 @@ export default function Navigation({ activeTab }: NavigationProps) {
 
                     {/* Dropdown Menu */}
                     {showUserMenu && (
-                        <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 py-2">
+                        <div className="absolute right-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 py-2 top-full">
                             <div className="px-4 py-2 border-b border-slate-700">
                                 <p className="text-sm text-slate-400">Logged in as</p>
-                                <p className="text-white font-semibold">{user.username}</p>
-                                <p className="text-xs text-slate-500">{user.email}</p>
-                                {isAdmin && <p className="text-xs text-amber-400 mt-1">✨ Admin Account</p>}
+                                <p className="text-white font-semibold truncate">{user.username}</p>
+                                {isAdmin && <p className="text-xs text-amber-400 mt-1">⭐ Admin Account</p>}
                             </div>
                             <button
                                 onClick={handleLogout}

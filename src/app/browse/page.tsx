@@ -4,6 +4,7 @@ import BonusBrowser from '@/components/BonusBrowser';
 import Navigation from '../../components/Navigation';
 
 export default function BrowsePage() {
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
             <div className="w-full px-10 py-10">
