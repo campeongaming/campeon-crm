@@ -9,6 +9,7 @@ interface BonusDetails {
     schedule_type?: string;
     schedule_from?: string;
     schedule_to?: string;
+    timezone?: string;
     trigger_name?: any;
     trigger_description?: any;
     trigger_type?: string;

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import React from 'react';
 import { API_ENDPOINTS } from '@/lib/api-config';
-import BonusWizard from './BonusWizard';
 
 const CURRENCIES = ['EUR', 'USD', 'CAD', 'AUD', 'BRL', 'NOK', 'NZD', 'CLP', 'MXN', 'GBP', 'PLN', 'PEN', 'ZAR', 'CHF', 'NGN', 'JPY', 'AZN', 'TRY', 'KZT', 'RUB', 'UZS'];
 
@@ -182,31 +181,8 @@ export default function SimpleBonusForm() {
 
     return (
         <div className="space-y-6">
-            {/* New Bonus Builder - Always Visible */}
             <div>
-                <h2 className="text-2xl font-bold text-blue-300 mb-4">✨ Bonus Builder (Auto-Generate ID)</h2>
-                <BonusWizard
-                    inline={true}
-                    onBonusCreated={(bonusData) => {
-                        console.log('Bonus created:', bonusData);
-                        // Auto-fill the classic form with the generated ID
-                        setFormData(prev => ({
-                            ...prev,
-                            id: bonusData.id
-                        }));
-                        setMessage(`✅ Bonus ID "${bonusData.id}" generated! It's been auto-filled in the form below.`);
-                        setTimeout(() => setMessage(''), 4000);
-                    }}
-                />
-            </div>
-
-            {/* Divider */}
-            <div className="border-t-2 border-gray-700 my-8"></div>
-
-            {/* Classic Casino Bonus Form - Always Visible */}
-            <div>
-                <h2 className="text-2xl font-bold text-blue-300 mb-4">🎰 Classic Casino Bonus Form</h2>
-                <p className="text-sm text-gray-400 mb-4">💡 The Bonus ID from the builder above will auto-fill here. Adjust other settings and submit to complete creation.</p>
+                <h2 className="text-2xl font-bold text-blue-300 mb-4">🎰 Casino Bonus Form</h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Row 1: Name & Provider */}
                     <div className="card">
@@ -382,7 +358,7 @@ export default function SimpleBonusForm() {
                     </div>
 
                     {/* Notes */}
-                    <div className="card-base">
+                    <div className="card">
                         <h3 className="text-xl font-semibold text-white mb-4">📝 Notes (Optional)</h3>
                         <textarea
                             name="notes"
@@ -393,21 +369,7 @@ export default function SimpleBonusForm() {
                             placeholder="Add any notes about this bonus template..."
                         />
                     </div>
-                    {/* Notes */}
-                    <div className="form-section">
-                        <h3 className="section-title">📝 Notes (Optional)</h3>
-                        <div>
-                            <label className="label-text">Internal Notes</label>
-                            <textarea
-                                name="notes"
-                                value={formData.notes}
-                                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                                className="input-field"
-                                rows={4}
-                                placeholder="Add any internal notes about this bonus..."
-                            />
-                        </div>
-                    </div>
+
                     {/* Message */}
                     {message && (
                         <div className={`p-4 rounded-lg ${message.includes('✅') ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300'}`}>
