@@ -37,6 +37,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
     # Add migration to add missing columns if they don't exist
+    # PostgreSQL requires rollback after failed transaction
     with engine.connect() as conn:
         # Check if columns exist, if not add them
         try:
@@ -45,9 +46,8 @@ def init_db():
             conn.commit()
             print("✅ Added casino_proportions column")
         except Exception as e:
-            if "already exists" in str(e) or "duplicate column" in str(e):
-                pass  # Column already exists
-            else:
+            conn.rollback()  # Required for PostgreSQL after failed transaction
+            if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
                 print(f"Note: {e}")
 
         try:
@@ -56,9 +56,8 @@ def init_db():
             conn.commit()
             print("✅ Added live_casino_proportions column")
         except Exception as e:
-            if "already exists" in str(e) or "duplicate column" in str(e):
-                pass  # Column already exists
-            else:
+            conn.rollback()  # Required for PostgreSQL after failed transaction
+            if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
                 print(f"Note: {e}")
 
     print("✅ Database initialized")

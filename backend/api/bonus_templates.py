@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import json as json_lib
+import os
 
 from database.database import get_db
 from database.models import BonusTemplate, BonusTranslation
@@ -249,16 +250,31 @@ def search_bonus_template(query: str, db: Session = Depends(get_db)):
     ]
 
     # Add date-based filtering if query looks like a date
+    # PostgreSQL uses to_char, SQLite uses strftime
+    database_url = os.getenv("DATABASE_URL", "")
+    is_postgres = database_url.startswith("postgresql")
+
     if date_filter:
-        if len(date_filter) == 10:  # YYYY-MM-DD
-            conditions.append(func.strftime(
-                '%Y-%m-%d', BonusTemplate.created_at) == date_filter)
-        elif len(date_filter) == 7:  # YYYY-MM
-            conditions.append(func.strftime(
-                '%Y-%m', BonusTemplate.created_at) == date_filter)
-        elif len(date_filter) == 4:  # YYYY
-            conditions.append(func.strftime(
-                '%Y', BonusTemplate.created_at) == date_filter)
+        if is_postgres:
+            if len(date_filter) == 10:  # YYYY-MM-DD
+                conditions.append(func.to_char(
+                    BonusTemplate.created_at, 'YYYY-MM-DD') == date_filter)
+            elif len(date_filter) == 7:  # YYYY-MM
+                conditions.append(func.to_char(
+                    BonusTemplate.created_at, 'YYYY-MM') == date_filter)
+            elif len(date_filter) == 4:  # YYYY
+                conditions.append(func.to_char(
+                    BonusTemplate.created_at, 'YYYY') == date_filter)
+        else:
+            if len(date_filter) == 10:  # YYYY-MM-DD
+                conditions.append(func.strftime(
+                    '%Y-%m-%d', BonusTemplate.created_at) == date_filter)
+            elif len(date_filter) == 7:  # YYYY-MM
+                conditions.append(func.strftime(
+                    '%Y-%m', BonusTemplate.created_at) == date_filter)
+            elif len(date_filter) == 4:  # YYYY
+                conditions.append(func.strftime(
+                    '%Y', BonusTemplate.created_at) == date_filter)
 
     templates = db.query(BonusTemplate).filter(or_(*conditions)).all()
 
@@ -279,11 +295,20 @@ def get_bonuses_by_month(year: int, month: int, skip: int = 0, limit: int = 50, 
     print(
         f"[DEBUG] Fetching bonuses for {year}-{month}, skip={skip}, limit={limit}")
 
-    # SQLite-compatible date filtering using strftime
-    templates = db.query(BonusTemplate).filter(
-        func.strftime(
-            '%Y-%m', BonusTemplate.created_at) == f"{year:04d}-{month:02d}"
-    ).order_by(desc(BonusTemplate.created_at)).offset(skip).limit(limit).all()
+    # PostgreSQL uses to_char, SQLite uses strftime
+    database_url = os.getenv("DATABASE_URL", "")
+    is_postgres = database_url.startswith("postgresql")
+
+    if is_postgres:
+        templates = db.query(BonusTemplate).filter(
+            func.to_char(
+                BonusTemplate.created_at, 'YYYY-MM') == f"{year:04d}-{month:02d}"
+        ).order_by(desc(BonusTemplate.created_at)).offset(skip).limit(limit).all()
+    else:
+        templates = db.query(BonusTemplate).filter(
+            func.strftime(
+                '%Y-%m', BonusTemplate.created_at) == f"{year:04d}-{month:02d}"
+        ).order_by(desc(BonusTemplate.created_at)).offset(skip).limit(limit).all()
 
     print(f"[DEBUG] Found {len(templates)} bonuses")
     return [{"id": t.id, "provider": t.provider, "bonus_type": t.bonus_type, "created_at": t.created_at} for t in templates]
