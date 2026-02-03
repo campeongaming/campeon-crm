@@ -12,10 +12,16 @@ build/
 # Next.js
 .next/
 out/
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Backend environment files
+backend/.env
+backend/.env.local
+backend/.env.production
 
 # IDE
 .vscode/
