@@ -7,7 +7,6 @@ import { API_ENDPOINTS } from '@/lib/api-config';
 export default function CreateUserPage() {
     const [formData, setFormData] = useState({
         username: '',
-        email: '',
         password: '',
         confirmPassword: '',
         role: 'CRM OPS'
@@ -53,7 +52,6 @@ export default function CreateUserPage() {
                 `${API_ENDPOINTS.BASE_URL}/auth/admin/create-user`,
                 {
                     username: formData.username,
-                    email: formData.email || undefined,
                     password: formData.password,
                     role: formData.role
                 },
@@ -67,7 +65,6 @@ export default function CreateUserPage() {
             // Reset form
             setFormData({
                 username: '',
-                email: '',
                 password: '',
                 confirmPassword: '',
                 role: 'CRM OPS'
@@ -106,21 +103,6 @@ export default function CreateUserPage() {
                                 placeholder="firstname.lastname"
                             />
                             <p className="text-sm text-gray-400 mt-1">Format: firstname.lastname (e.g., john.smith)</p>
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                            <label className="block text-white mb-2 font-medium">
-                                Email <span className="text-gray-500">(Optional)</span>
-                            </label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                                placeholder="user@example.com"
-                            />
                         </div>
 
                         {/* Role */}
