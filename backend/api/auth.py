@@ -188,19 +188,9 @@ def admin_create_user(user: UserRegister, token: str, db: Session = Depends(get_
             detail="Username already exists"
         )
 
-    if user.email:
-        existing_email = db.query(User).filter(
-            User.email == user.email).first()
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-
     # Create new user with specified role (default: CRM OPS)
     new_user = User(
         username=user.username,
-        email=user.email,
         password_hash=hash_password(user.password),
         role=user.role if hasattr(user, 'role') and user.role else "CRM OPS",
         is_active=True
