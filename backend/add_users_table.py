@@ -22,7 +22,6 @@ try:
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username VARCHAR(50) UNIQUE NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 role VARCHAR(20) NOT NULL DEFAULT 'admin',
                 is_active BOOLEAN NOT NULL DEFAULT 1,
@@ -33,7 +32,6 @@ try:
 
         # Create indexes
         cursor.execute('CREATE INDEX ix_users_username ON users(username)')
-        cursor.execute('CREATE INDEX ix_users_email ON users(email)')
 
         conn.commit()
         print("✅ users table created successfully!")
