@@ -193,3 +193,29 @@ def admin_create_user(user: UserRegister, token: str, db: Session = Depends(get_
     db.refresh(new_user)
 
     return new_user
+
+
+@router.post("/migrate-email-nullable")
+async def migrate_email_nullable(db: Session = Depends(get_db)):
+    """
+    One-time migration endpoint to make email column nullable.
+    Can be called by anyone, runs once, then remove this endpoint.
+    """
+    from sqlalchemy import text
+
+    try:
+        # Make email column nullable
+        db.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL;"))
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": "Email column is now nullable. Remove this endpoint from code."
+        }
+    except Exception as e:
+        db.rollback()
+        return {
+            "status": "error",
+            "message": f"Migration failed: {str(e)}",
+            "note": "Column might already be nullable, or database doesn't support this operation"
+        }
