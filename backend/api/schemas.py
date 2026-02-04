@@ -161,7 +161,7 @@ class UserLogin(BaseModel):
 class UserRegister(BaseModel):
     """Schema for user registration"""
     username: str
-    email: str
+    email: Optional[str] = None
     password: str
 
 
@@ -169,7 +169,7 @@ class UserResponse(BaseModel):
     """Schema for user response"""
     id: int
     username: str
-    email: str
+    email: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime
