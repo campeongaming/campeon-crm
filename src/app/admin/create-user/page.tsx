@@ -41,7 +41,7 @@ export default function CreateUserPage() {
         setMessage('');
 
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('auth_token');
 
             if (!token) {
                 setMessage('❌ You must be logged in as admin');
@@ -177,8 +177,8 @@ export default function CreateUserPage() {
                         {/* Message */}
                         {message && (
                             <div className={`p-4 rounded-lg ${message.includes('✅')
-                                    ? 'bg-green-900/30 text-green-300 border border-green-700'
-                                    : 'bg-red-900/30 text-red-300 border border-red-700'
+                                ? 'bg-green-900/30 text-green-300 border border-green-700'
+                                : 'bg-red-900/30 text-red-300 border border-red-700'
                                 }`}>
                                 {message}
                             </div>
