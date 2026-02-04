@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = API_ENDPOINTS.BASE_URL;
 
 export default function LoginPage() {
     const router = useRouter();
