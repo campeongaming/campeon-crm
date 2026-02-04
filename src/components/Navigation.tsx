@@ -74,6 +74,21 @@ export default function Navigation({ activeTab }: NavigationProps) {
                                 <p className="text-white font-semibold truncate">{user.username}</p>
                                 {isAdmin && <p className="text-xs text-amber-400 mt-1">⭐ Admin Account</p>}
                             </div>
+
+                            {/* Admin-only menu items */}
+                            {isAdmin && (
+                                <>
+                                    <Link
+                                        href="/admin/create-user"
+                                        onClick={() => setShowUserMenu(false)}
+                                        className="block w-full text-left px-4 py-2 text-blue-400 hover:bg-blue-500/10 transition-colors text-sm font-semibold"
+                                    >
+                                        👥 User Management
+                                    </Link>
+                                    <div className="border-t border-slate-700 my-1"></div>
+                                </>
+                            )}
+
                             <button
                                 onClick={handleLogout}
                                 className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-500/10 transition-colors text-sm font-semibold"

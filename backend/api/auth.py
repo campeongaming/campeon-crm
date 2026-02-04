@@ -156,3 +156,58 @@ def get_current_user(token: str = None, db: Session = Depends(get_db)):
 def logout():
     """Logout user (token invalidation is handled client-side)"""
     return {"message": "Successfully logged out"}
+
+
+@router.post("/auth/admin/create-user", response_model=UserResponse)
+def admin_create_user(user: UserRegister, token: str, db: Session = Depends(get_db)):
+    """Admin-only endpoint to create new users"""
+
+    # Verify admin token
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+
+    # Check if user is admin
+    admin_user = db.query(User).filter(
+        User.username == payload.get("username")).first()
+    if not admin_user or admin_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Check if user already exists
+    existing_user = db.query(User).filter(
+        User.username == user.username).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+
+    if user.email:
+        existing_email = db.query(User).filter(
+            User.email == user.email).first()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+    # Create new user with specified role (default: CRM OPS)
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        password_hash=hash_password(user.password),
+        role=user.role if hasattr(user, 'role') and user.role else "CRM OPS",
+        is_active=True
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
