@@ -1,15 +1,21 @@
 """
 Migration script to make the 'email' column nullable for existing PostgreSQL databases.
 Run this ONCE to fix the constraint issue.
+
+Usage:
+  python migrate_email_nullable_fix.py  # Uses DATABASE_URL from .env
+  python migrate_email_nullable_fix.py <database_url>  # Uses provided URL
 """
 
 from sqlalchemy import create_engine, text
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./casino_crm.db")
+DATABASE_URL = sys.argv[1] if len(sys.argv) > 1 else os.getenv(
+    "DATABASE_URL", "sqlite:///./casino_crm.db")
 
 
 def migrate():

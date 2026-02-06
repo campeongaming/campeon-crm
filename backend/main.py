@@ -54,6 +54,17 @@ app.include_router(custom_languages_router, prefix="/api",
                    tags=["custom-languages"])
 
 
+@app.get("/")
+def root():
+    """Root endpoint - API is running"""
+    return {
+        "message": "CAMPEON CRM API is running",
+        "docs": "/docs",
+        "health": "/health",
+        "version": "1.0.0"
+    }
+
+
 @app.get("/health")
 def health_check():
     """Health check endpoint - tests API and database connectivity"""

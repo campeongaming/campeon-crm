@@ -48,12 +48,7 @@ def get_db():
     """Get database session with connection pooling and error handling"""
     db = SessionLocal()
     try:
-        # Test connection with a simple query
-        db.execute(text("SELECT 1"))
         yield db
-    except Exception as e:
-        db.close()
-        raise
     finally:
         db.close()
 
