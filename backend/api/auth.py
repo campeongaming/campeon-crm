@@ -75,6 +75,7 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     # Create new user
     new_user = User(
         username=user.username,
+        email=user.email,  # Optional email
         password_hash=hash_password(user.password),
         role=role
     )
@@ -187,6 +188,7 @@ def admin_create_user(user: UserRegister, token: str = Query(...), db: Session =
 
     new_user = User(
         username=user.username,
+        email=user.email,  # Optional email
         password_hash=hash_password(user.password),
         role=selected_role,
         is_active=True

@@ -227,6 +227,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=True,
+                   index=True)  # Optional email field
     password_hash = Column(String(255), nullable=False)
     # admin, CRM OPS, Translation Team, Optimization Team
     role = Column(String(100), default="admin", nullable=False)
