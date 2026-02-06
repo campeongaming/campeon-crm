@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; import { API_ENDPOINTS } from '@/lib/api-config';
+import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
+
 interface CurrencyTable {
     id: string;
     name: string;
