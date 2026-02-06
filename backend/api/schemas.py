@@ -162,6 +162,7 @@ class UserRegister(BaseModel):
     """Schema for user registration"""
     username: str
     password: str
+    role: Optional[str] = None
 
 
 class UserResponse(BaseModel):
