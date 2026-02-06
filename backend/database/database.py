@@ -1,6 +1,6 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import StaticPool, QueuePool
 import os
 from dotenv import load_dotenv
 
@@ -16,16 +16,43 @@ if DATABASE_URL.startswith("sqlite"):
         poolclass=StaticPool,
     )
 else:
-    # PostgreSQL config for production
-    engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
+    # PostgreSQL config for production (Render)
+    # Important: pool_recycle must be less than Render's idle timeout (usually 5 minutes)
+    # pool_pre_ping verifies connections before using them
+    engine = create_engine(
+        DATABASE_URL,
+        poolclass=QueuePool,
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=300,  # Recycle connections after 5 minutes
+        pool_pre_ping=True,  # Test connections before using them
+        connect_args={
+            "connect_timeout": 10,
+            "application_name": "campeon_crm"
+        }
+    )
+    
+    # Handle connection recycling more gracefully
+    @event.listens_for(engine, "connect")
+    def receive_connect(dbapi_conn, connection_record):
+        """Configure connection parameters on connect"""
+        cursor = dbapi_conn.cursor()
+        cursor.execute("SET idle_in_transaction_session_timeout = 60000")  # 60 seconds
+        cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():
+    """Get database session with connection pooling and error handling"""
     db = SessionLocal()
     try:
+        # Test connection with a simple query
+        db.execute(text("SELECT 1"))
         yield db
+    except Exception as e:
+        db.close()
+        raise
     finally:
         db.close()
 

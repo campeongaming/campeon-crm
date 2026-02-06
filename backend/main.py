@@ -56,4 +56,22 @@ app.include_router(custom_languages_router, prefix="/api",
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "CAMPEON CRM API", "timestamp": __import__("datetime").datetime.utcnow().isoformat()}
+    """Health check endpoint - tests API and database connectivity"""
+    from sqlalchemy import text
+    from database.database import SessionLocal
+    
+    db_status = "error"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "ok" if db_status == "ok" else "degraded",
+        "service": "CAMPEON CRM API",
+        "database": db_status,
+        "timestamp": __import__("datetime").datetime.utcnow().isoformat()
+    }
