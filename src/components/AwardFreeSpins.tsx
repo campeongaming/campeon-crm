@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 interface CurrencyTable {
     id: string;
@@ -79,11 +80,11 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
 
                 // Fetch cost from provider (PRAGMATIC/BETSOFT)
                 console.log(`🔍 Fetching from ${provider} provider for cost tables...`);
-                const providerResponse = await axios.get(`http://localhost:8000/api/stable-config/${provider}/with-tables`);
+                const providerResponse = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/stable-config/${provider}/with-tables`);
 
                 // Fetch all other tables from DEFAULT (minimum_amount, maximum_withdraw, stakes, amounts, etc.)
                 console.log('🔍 Fetching from DEFAULT provider for other tables...');
-                const defaultResponse = await axios.get(`http://localhost:8000/api/stable-config/DEFAULT/with-tables`);
+                const defaultResponse = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/stable-config/DEFAULT/with-tables`);
 
                 // Merge: cost from provider, everything else from DEFAULT
                 const mergedConfig: AdminConfig = {
@@ -108,7 +109,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
     const fetchPricingTableByCost = async (costValue: number) => {
         try {
             setLoadingAdmin(true);
-            const response = await axios.get(`http://localhost:8000/api/stable-config/${provider}?cost_only=true`);
+            const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/stable-config/${provider}?cost_only=true`);
             const config = response.data as AdminConfig;
 
             // Search for cost table matching this EUR value
@@ -500,7 +501,7 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
             };
 
             // Save to database
-            await axios.post('http://localhost:8000/api/bonus-templates', payload);
+            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates`, payload);
 
             // Also save the complete JSON for reference
             console.log('Complete Bonus JSON:', JSON.stringify(bonusJson, null, 2));

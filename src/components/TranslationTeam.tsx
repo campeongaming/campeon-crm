@@ -319,7 +319,7 @@ export default function TranslationTeam() {
                 // Reload translations without clearing the message
                 setTimeout(async () => {
                     const response = await axios.get(
-                        `http://localhost:8000/api/bonus-templates/${selectedBonusId}/translations`
+                        `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${selectedBonusId}/translations`
                     );
                     const existingTranslations = response.data || [];
                     const allLanguageCodes = [...LANGUAGES.map(l => l.code), ...customLanguages.map(l => l.code)];
