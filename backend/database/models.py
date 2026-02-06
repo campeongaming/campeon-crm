@@ -221,13 +221,15 @@ class CustomLanguage(Base):
 class User(Base):
     """
     Stores user accounts for authentication.
+    Supports multiple role types: admin, CRM OPS, Translation Team, Optimization Team
     """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), default="admin", nullable=False)  # admin, user
+    # admin, CRM OPS, Translation Team, Optimization Team
+    role = Column(String(100), default="admin", nullable=False)
     is_active = Column(Boolean, default=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

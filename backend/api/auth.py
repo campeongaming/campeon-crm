@@ -181,10 +181,14 @@ def admin_create_user(user: UserRegister, token: str, db: Session = Depends(get_
         )
 
     # Create new user with specified role (default: CRM OPS)
+    # Supported roles: admin, CRM OPS, Translation Team, Optimization Team
+    valid_roles = ["admin", "CRM OPS", "Translation Team", "Optimization Team"]
+    selected_role = user.role if user.role in valid_roles else "CRM OPS"
+
     new_user = User(
         username=user.username,
         password_hash=hash_password(user.password),
-        role=user.role if hasattr(user, 'role') and user.role else "CRM OPS",
+        role=selected_role,
         is_active=True
     )
 
