@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
@@ -151,7 +151,7 @@ def logout():
 
 
 @router.post("/auth/admin/create-user", response_model=UserResponse)
-def admin_create_user(user: UserRegister, token: str, db: Session = Depends(get_db)):
+def admin_create_user(user: UserRegister, token: str = Query(...), db: Session = Depends(get_db)):
     """Admin-only endpoint to create new users"""
 
     # Verify admin token
