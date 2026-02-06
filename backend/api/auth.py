@@ -106,6 +106,10 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             detail="User account is inactive"
         )
 
+    # Update last login
+    db_user.last_login = datetime.utcnow()
+    db.commit()
+
     # Create access token
     access_token = create_access_token(data={"sub": db_user.username})
 
@@ -199,6 +203,74 @@ def admin_create_user(user: UserRegister, token: str = Query(...), db: Session =
     db.refresh(new_user)
 
     return new_user
+
+
+@router.get("/auth/users")
+def list_users(token: str = Query(...), db: Session = Depends(get_db)):
+    """Admin-only endpoint to list all users"""
+
+    # Verify admin token
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+
+    # Check if user is admin
+    admin_user = db.query(User).filter(
+        User.username == payload.get("username")).first()
+    if not admin_user or admin_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Get all users
+    users = db.query(User).all()
+    return users
+
+
+@router.delete("/auth/users/{user_id}")
+def delete_user(user_id: int, token: str = Query(...), db: Session = Depends(get_db)):
+    """Admin-only endpoint to delete a user"""
+
+    # Verify admin token
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+
+    # Check if user is admin
+    admin_user = db.query(User).filter(
+        User.username == payload.get("username")).first()
+    if not admin_user or admin_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Prevent deleting yourself
+    if admin_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete yourself"
+        )
+
+    # Find and delete user
+    user_to_delete = db.query(User).filter(User.id == user_id).first()
+    if not user_to_delete:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    db.delete(user_to_delete)
+    db.commit()
+
+    return {"message": f"User {user_to_delete.username} deleted successfully"}
 
 
 @router.post("/migrate-email-nullable")

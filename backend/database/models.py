@@ -237,6 +237,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow,
                         onupdate=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)  # Track last login
 
     def __repr__(self):
         return f"<User {self.username} ({self.role})>"

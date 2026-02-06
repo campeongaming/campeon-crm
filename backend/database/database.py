@@ -83,4 +83,14 @@ def init_db():
             if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
                 print(f"Note: {e}")
 
+        try:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL"))
+            conn.commit()
+            print("✅ Added last_login column to users")
+        except Exception as e:
+            conn.rollback()
+            if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+                print(f"Note: {e}")
+
     print("✅ Database initialized")
