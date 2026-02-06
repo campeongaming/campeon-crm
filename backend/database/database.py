@@ -31,13 +31,14 @@ else:
             "application_name": "campeon_crm"
         }
     )
-    
+
     # Handle connection recycling more gracefully
     @event.listens_for(engine, "connect")
     def receive_connect(dbapi_conn, connection_record):
         """Configure connection parameters on connect"""
         cursor = dbapi_conn.cursor()
-        cursor.execute("SET idle_in_transaction_session_timeout = 60000")  # 60 seconds
+        # 60 seconds
+        cursor.execute("SET idle_in_transaction_session_timeout = 60000")
         cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

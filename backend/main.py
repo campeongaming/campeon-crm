@@ -59,7 +59,7 @@ def health_check():
     """Health check endpoint - tests API and database connectivity"""
     from sqlalchemy import text
     from database.database import SessionLocal
-    
+
     db_status = "error"
     try:
         db = SessionLocal()
@@ -68,7 +68,7 @@ def health_check():
         db_status = "ok"
     except Exception as e:
         db_status = f"error: {str(e)}"
-    
+
     return {
         "status": "ok" if db_status == "ok" else "degraded",
         "service": "CAMPEON CRM API",
