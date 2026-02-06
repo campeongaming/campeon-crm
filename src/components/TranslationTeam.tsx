@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 interface BonusTemplate {
     id: string;
@@ -71,7 +72,7 @@ export default function TranslationTeam() {
 
     const fetchCustomLanguages = async () => {
         try {
-            const response = await axios.get('http://localhost:8000/api/custom-languages');
+            const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/custom-languages`);
             setCustomLanguages(response.data);
             // Add custom languages to selected languages
             const customLangCodes = response.data.map((lang: any) => lang.code);
@@ -85,7 +86,7 @@ export default function TranslationTeam() {
         try {
             setLoading(true);
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/dates/${selectedYear}/${selectedMonth + 1}`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/dates/${selectedYear}/${selectedMonth + 1}`
             );
             setBonuses(response.data);
         } catch (error) {
@@ -105,7 +106,7 @@ export default function TranslationTeam() {
         try {
             setLoading(true);
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/search?id=${searchId}`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/search?id=${searchId}`
             );
             setBonuses([response.data]);
             setSelectedBonusId(response.data.id);
@@ -182,7 +183,7 @@ export default function TranslationTeam() {
         const newCustomLang: LanguageItem = { code: langCode, name: langCode, isCustom: true };
 
         // Save to backend
-        axios.post('http://localhost:8000/api/custom-languages', newCustomLang)
+        axios.post(`${API_ENDPOINTS.BASE_URL}/api/custom-languages`, newCustomLang)
             .then(() => {
                 setCustomLanguages([...customLanguages, newCustomLang]);
                 setSelectedLanguages([...selectedLanguages, langCode]);
@@ -207,7 +208,7 @@ export default function TranslationTeam() {
 
     const handleRemoveCustomLanguage = (languageCode: string) => {
         // Delete from backend
-        axios.delete(`http://localhost:8000/api/custom-languages/${languageCode}`)
+        axios.delete(`${API_ENDPOINTS.BASE_URL}/api/custom-languages/${languageCode}`)
             .then(() => {
                 setCustomLanguages(customLanguages.filter(lang => lang.code !== languageCode));
                 handleRemoveLanguage(languageCode);
@@ -226,7 +227,7 @@ export default function TranslationTeam() {
         try {
             console.log('Loading translations for bonus:', bonusId);
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/${bonusId}/translations`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${bonusId}/translations`
             );
 
             console.log('Received translations:', response.data);
@@ -283,7 +284,7 @@ export default function TranslationTeam() {
                     // Save translation with content
                     console.log(`Saving translation for ${trans.language}:`, trans);
                     const response = await axios.post(
-                        `http://localhost:8000/api/bonus-templates/${selectedBonusId}/translations`,
+                        `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${selectedBonusId}/translations`,
                         {
                             language: trans.language,
                             name: trans.offer_name,
@@ -298,7 +299,7 @@ export default function TranslationTeam() {
                     try {
                         console.log(`Deleting empty translation for ${trans.language}`);
                         await axios.delete(
-                            `http://localhost:8000/api/bonus-templates/${selectedBonusId}/translations/${trans.language}`
+                            `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${selectedBonusId}/translations/${trans.language}`
                         );
                         console.log(`Deleted ${trans.language}`);
                         deletedCount++;

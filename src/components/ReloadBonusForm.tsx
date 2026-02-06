@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
+import axios from 'axios'; import { API_ENDPOINTS } from '@/lib/api-config';
 interface CurrencyTable {
     id: string;
     name: string;
@@ -82,7 +81,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
 
                 // Fetch ALL tables from DEFAULT (including cost, amounts, stakes, withdrawals, proportions)
                 console.log('🔍 Fetching ALL tables from DEFAULT provider...');
-                const response = await axios.get(`http://localhost:8000/api/stable-config/DEFAULT/with-tables`);
+                const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/stable-config/DEFAULT/with-tables`);
                 console.log('📦 Response data:', response.data);
                 const config = response.data as AdminConfig;
 
@@ -438,7 +437,7 @@ export default function ReloadBonusForm({ notes, setNotes, onBonusSaved }: { not
             };
 
             // Save to database
-            await axios.post('http://localhost:8000/api/bonus-templates', payload);
+            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates`, payload);
 
             alert(`✅ Reload Bonus "${bonusId}" saved successfully!`);
             onBonusSaved?.();

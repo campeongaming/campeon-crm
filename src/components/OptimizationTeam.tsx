@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -58,7 +59,7 @@ export default function OptimizationTeam() {
         try {
             setLoading(true);
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/dates/${selectedYear}/${selectedMonth + 1}`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/dates/${selectedYear}/${selectedMonth + 1}`
             );
             setBonuses(response.data);
         } catch (error) {
@@ -97,7 +98,7 @@ export default function OptimizationTeam() {
         setMessage('');
         try {
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/search?id=${searchId}`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/search?id=${searchId}`
             );
             setBonusData(response.data);
             setSelectedBonusId(response.data.id);
@@ -123,7 +124,7 @@ export default function OptimizationTeam() {
         // Fetch full bonus details including notes
         try {
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/${bonus.id}`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${bonus.id}`
             );
             setBonusNotes(response.data.notes || '');
         } catch (error) {
@@ -145,7 +146,7 @@ export default function OptimizationTeam() {
             // URL-encode the bonus ID to handle special characters (€, %, spaces, etc.)
             const encodedBonusId = encodeURIComponent(selectedBonusId);
             const response = await axios.get(
-                `http://localhost:8000/api/bonus-templates/${encodedBonusId}/json`
+                `${API_ENDPOINTS.BASE_URL}/api/bonus-templates/${encodedBonusId}/json`
             );
 
             const bonusJson = response.data;

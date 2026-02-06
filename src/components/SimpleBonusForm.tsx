@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '@/lib/api-config';
 import React from 'react';
 import { API_ENDPOINTS } from '@/lib/api-config';
 
@@ -65,7 +66,7 @@ export default function SimpleBonusForm() {
         const fetchAdminConfig = async () => {
             try {
                 console.log(`🔍 Fetching admin config from ${formData.provider}...`);
-                const response = await axios.get(`http://localhost:8000/api/stable-config/${formData.provider}/with-tables`);
+                const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/stable-config/${formData.provider}/with-tables`);
                 console.log('📦 Admin config response:', response.data);
                 setAdminConfig(response.data as AdminConfig);
             } catch (error) {

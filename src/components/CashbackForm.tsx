@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
+import axios from 'axios'; import { API_ENDPOINTS } from '@/lib/api-config';
 interface CurrencyTable {
     id: string;
     name: string;
@@ -75,7 +74,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
             try {
                 setLoadingAdmin(true);
                 console.log('🔍 Fetching ALL tables from DEFAULT provider...');
-                const response = await axios.get(`http://localhost:8000/api/stable-config/DEFAULT/with-tables`);
+                const response = await axios.get(`${API_ENDPOINTS.BASE_URL}/api/stable-config/DEFAULT/with-tables`);
                 const config = response.data as AdminConfig;
 
                 console.log('📦 Fetched tables from DEFAULT');
@@ -359,7 +358,7 @@ export default function CashbackForm({ notes, setNotes, onBonusSaved }: { notes:
 
             console.log('📤 Sending cashback payload:', payload);
 
-            const response = await axios.post('http://localhost:8000/api/bonus-templates', payload);
+            const response = await axios.post(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates`, payload);
             console.log('✅ Cashback saved:', response.data);
 
             alert('✅ Cashback bonus created successfully!');

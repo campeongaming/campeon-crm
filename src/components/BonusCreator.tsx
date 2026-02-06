@@ -230,7 +230,7 @@ export const BonusCreator: React.FC<BonusCreatorProps> = ({ onBonusSaved }) => {
                 payload.maximum_withdraw = createCurrencyMap(cashbackMaximum, currencies);
             }
 
-            await axios.post('http://localhost:8000/api/bonus-templates', payload);
+            await axios.post(`${API_ENDPOINTS.BASE_URL}/api/bonus-templates`, payload);
             setValidationErrors([]);
             alert(`✅ Bonus "${id}" saved successfully! Go to Optimization tab to generate JSON.`);
             onBonusSaved?.();

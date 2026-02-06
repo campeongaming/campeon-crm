@@ -2,8 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from './api-config';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = API_ENDPOINTS.BASE_URL;
 
 interface User {
     id: string;
