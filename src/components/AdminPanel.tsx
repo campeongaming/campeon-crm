@@ -196,34 +196,36 @@ export default function AdminPanel() {
                 live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
             };
 
-            // Only include the tab-specific fields being saved
+            // Merge: Only update the tab-specific fields being saved, preserve all others from current config
             if (activeTab === 'cost') {
                 payload.cost = config.cost;
-            } else if (activeTab === 'amounts') {
+            } else {
+                payload.cost = config.cost || [];
+            }
+
+            if (activeTab === 'amounts') {
                 payload.minimum_amount = config.minimum_amount;
                 payload.maximum_amount = config.maximum_amount;
                 payload.currency_unit = config.currency_unit;
-            } else if (activeTab === 'withdrawals') {
-                payload.maximum_withdraw = config.maximum_withdraw;
-            } else if (activeTab === 'wager') {
-                payload.minimum_stake_to_wager = config.minimum_stake_to_wager;
-                payload.maximum_stake_to_wager = config.maximum_stake_to_wager;
-            } else if (activeTab === 'proportions') {
-                // Proportions tab only sends proportions, no tables
+            } else {
+                payload.minimum_amount = config.minimum_amount || [];
+                payload.maximum_amount = config.maximum_amount || [];
+                payload.currency_unit = config.currency_unit || [];
             }
 
-            // Add default empty arrays for fields not in this tab
-            if (activeTab !== 'cost') payload.cost = [];
-            if (activeTab !== 'amounts') {
-                payload.minimum_amount = [];
-                payload.maximum_amount = [];
-                payload.currency_unit = [];
+            if (activeTab === 'wager') {
+                payload.minimum_stake_to_wager = config.minimum_stake_to_wager;
+                payload.maximum_stake_to_wager = config.maximum_stake_to_wager;
+            } else {
+                payload.minimum_stake_to_wager = config.minimum_stake_to_wager || [];
+                payload.maximum_stake_to_wager = config.maximum_stake_to_wager || [];
             }
-            if (activeTab !== 'wager') {
-                payload.minimum_stake_to_wager = [];
-                payload.maximum_stake_to_wager = [];
+
+            if (activeTab === 'withdrawals') {
+                payload.maximum_withdraw = config.maximum_withdraw;
+            } else {
+                payload.maximum_withdraw = config.maximum_withdraw || [];
             }
-            if (activeTab !== 'withdrawals') payload.maximum_withdraw = [];
 
             await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config?tab=${activeTab}`, payload);
 
@@ -360,32 +362,13 @@ export default function AdminPanel() {
                 live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
             };
 
-            // Only include the field being imported
-            if (targetField === 'cost') {
-                payload.cost = newTables;
-            } else if (targetField === 'minimum_amount') {
-                payload.minimum_amount = newTables;
-            } else if (targetField === 'maximum_amount') {
-                payload.maximum_amount = newTables;
-            } else if (targetField === 'minimum_stake_to_wager') {
-                payload.minimum_stake_to_wager = newTables;
-            } else if (targetField === 'maximum_stake_to_wager') {
-                payload.maximum_stake_to_wager = newTables;
-            } else if (targetField === 'maximum_withdraw') {
-                payload.maximum_withdraw = newTables;
-            }
-
-            // Add empty arrays for other fields
-            if (targetField !== 'cost') payload.cost = [];
-            if (targetField !== 'minimum_amount' && targetField !== 'maximum_amount') {
-                payload.minimum_amount = [];
-                payload.maximum_amount = [];
-            }
-            if (targetField !== 'minimum_stake_to_wager' && targetField !== 'maximum_stake_to_wager') {
-                payload.minimum_stake_to_wager = [];
-                payload.maximum_stake_to_wager = [];
-            }
-            if (targetField !== 'maximum_withdraw') payload.maximum_withdraw = [];
+            // Merge: Only update the field being imported, preserve all others from current config
+            payload.cost = targetField === 'cost' ? newTables : (config.cost || []);
+            payload.minimum_amount = targetField === 'minimum_amount' ? newTables : (config.minimum_amount || []);
+            payload.maximum_amount = targetField === 'maximum_amount' ? newTables : (config.maximum_amount || []);
+            payload.minimum_stake_to_wager = targetField === 'minimum_stake_to_wager' ? newTables : (config.minimum_stake_to_wager || []);
+            payload.maximum_stake_to_wager = targetField === 'maximum_stake_to_wager' ? newTables : (config.maximum_stake_to_wager || []);
+            payload.maximum_withdraw = targetField === 'maximum_withdraw' ? newTables : (config.maximum_withdraw || []);
 
             await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config?tab=${activeTab}`, payload);
 
