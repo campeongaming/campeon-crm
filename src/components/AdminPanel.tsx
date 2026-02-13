@@ -347,10 +347,18 @@ export default function AdminPanel() {
                 }
             }
 
-            // Update state
+            // Merge: append imported tables to existing ones, reassigning IDs sequentially
+            const existingTables = (config[targetField as keyof StableConfigWithVariations] as CurrencyTable[]) || [];
+            const mergedTables = [...existingTables, ...newTables].map((table, idx) => ({
+                ...table,
+                id: String(idx + 1),
+                name: `Table ${idx + 1}`
+            }));
+
+            // Update state with merged tables
             const updatedConfig = {
                 ...config,
-                [targetField]: newTables,
+                [targetField]: mergedTables,
             };
             setConfig(updatedConfig);
 
@@ -362,17 +370,17 @@ export default function AdminPanel() {
                 live_casino_proportions: selectedProvider === 'PRAGMATIC' ? pragmaticLiveCasinoProportions : betsoftLiveCasinoProportions,
             };
 
-            // Merge: Only update the field being imported, preserve all others from current config
-            payload.cost = targetField === 'cost' ? newTables : (config.cost || []);
-            payload.minimum_amount = targetField === 'minimum_amount' ? newTables : (config.minimum_amount || []);
-            payload.maximum_amount = targetField === 'maximum_amount' ? newTables : (config.maximum_amount || []);
-            payload.minimum_stake_to_wager = targetField === 'minimum_stake_to_wager' ? newTables : (config.minimum_stake_to_wager || []);
-            payload.maximum_stake_to_wager = targetField === 'maximum_stake_to_wager' ? newTables : (config.maximum_stake_to_wager || []);
-            payload.maximum_withdraw = targetField === 'maximum_withdraw' ? newTables : (config.maximum_withdraw || []);
+            // Merge: Only update the field being imported with merged tables, preserve all others from current config
+            payload.cost = targetField === 'cost' ? mergedTables : (config.cost || []);
+            payload.minimum_amount = targetField === 'minimum_amount' ? mergedTables : (config.minimum_amount || []);
+            payload.maximum_amount = targetField === 'maximum_amount' ? mergedTables : (config.maximum_amount || []);
+            payload.minimum_stake_to_wager = targetField === 'minimum_stake_to_wager' ? mergedTables : (config.minimum_stake_to_wager || []);
+            payload.maximum_stake_to_wager = targetField === 'maximum_stake_to_wager' ? mergedTables : (config.maximum_stake_to_wager || []);
+            payload.maximum_withdraw = targetField === 'maximum_withdraw' ? mergedTables : (config.maximum_withdraw || []);
 
             await axios.post(`${API_ENDPOINTS.BASE_URL}/api/stable-config?tab=${activeTab}`, payload);
 
-            setMessage(`✅ Imported and saved ${newTables.length} pricing table(s) to ${targetField}!`);
+            setMessage(`✅ Imported ${newTables.length} new table(s). Total: ${mergedTables.length} table(s) for ${targetField}!`);
             setShowImportModal(false);
             setImportData('');
             setImportTargetField('');
