@@ -236,9 +236,16 @@ export default function AwardFreeSpins({ notes, setNotes, onBonusSaved }: { note
                     multiplierMap[curr] = parseFloat(multiplier.toFixed(4));
                     console.log(`✅ Up To multiplier for ${curr}: (${upToFsPerEuro} * ${cost}) / ${currencyUnitValue} = ${multiplier.toFixed(4)}`);
                 } else if (minimumAmountEUR !== '' && minimumAmountEUR > 0 && maximumBetsEUR !== '' && maximumBetsEUR > 0) {
-                    // Original logic: multiplier = maximumBetsEUR / (minimumAmountEUR / cost)
-                    const fsValue = (minimumAmountEUR as number) / cost;
+                    // Mode B: Apply currency-specific minimum amount from minimum_amount table
+                    const minimumAmountMap = buildCurrencyMap(minimumAmountEUR as number, 'minimum_amount');
+                    const minimumAmountForCurr = minimumAmountMap[curr] || minimumAmountEUR;
+
+                    // fsValue = minimum amount (currency-specific) / cost (currency-specific)
+                    const fsValue = minimumAmountForCurr / cost;
+
+                    // multiplier = maximumBets (fixed for all currencies) / fsValue
                     multiplierMap[curr] = parseFloat(((maximumBetsEUR as number) / fsValue).toFixed(4));
+                    console.log(`✅ Mode B multiplier for ${curr}: (${minimumAmountForCurr} / ${cost}) = fsValue ${fsValue}, then ${maximumBetsEUR} / ${fsValue} = ${multiplierMap[curr]}`);
                 } else {
                     multiplierMap[curr] = 1;
                 }
