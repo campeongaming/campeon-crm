@@ -4,7 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { AuthGuard } from "@/lib/auth-guard";
 
 export const metadata: Metadata = {
-    title: "BonusLab - Collaborative Bonus Management System",
+    title: "BonusLab",
 };
 
 export default function RootLayout({
