@@ -1,28 +1,27 @@
 import { ImageResponse } from 'next/og';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 export const size = { width: 32, height: 32 };
 export const contentType = 'image/png';
 
 export default function Icon() {
+    const imgData = readFileSync(join(process.cwd(), 'public', 'favicon-logo.png'));
+    const base64 = `data:image/png;base64,${imgData.toString('base64')}`;
+
     return new ImageResponse(
         (
             <div
                 style={{
                     width: 32,
                     height: 32,
-                    background: '#000000',
-                    borderRadius: 6,
+                    borderRadius: 8,
+                    overflow: 'hidden',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: 14,
-                    fontFamily: 'sans-serif',
-                    letterSpacing: '-0.5px',
                 }}
             >
-                BL
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={base64} width={32} height={32} alt="" style={{ borderRadius: 8 }} />
             </div>
         ),
         { ...size }
