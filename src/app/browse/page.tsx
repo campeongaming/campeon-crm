@@ -13,7 +13,7 @@ export default function BrowsePage() {
                         <img
                             src="/Bonuslab_transparent.png"
                             alt="BonusLab"
-                            className="h-20 w-auto object-contain"
+                            className="h-20 w-auto object-contain rounded-2xl"
                         />
                     </div>
                 </header>
