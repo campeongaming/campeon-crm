@@ -41,7 +41,7 @@ DATABASE_URL = <YOUR_POSTGRESQL_URL_FROM_DEVOPS>
 ### 1.4 Deploy
 Click **"Create Web Service"**
 
-You'll get a URL like: `https://campeon-crm-api.onrender.com`
+You'll get a URL like: `https://api.top-bonuslab.com`
 
 ---
 
@@ -60,7 +60,7 @@ You'll get a URL like: `https://campeon-crm-api.onrender.com`
 ### 2.2 Set Environment Variables
 In Vercel dashboard → Settings → Environment Variables:
 ```
-NEXT_PUBLIC_API_URL = https://campeon-crm-api.onrender.com
+NEXT_PUBLIC_API_URL = https://api.top-bonuslab.com
 ```
 
 ### 2.3 Deploy
@@ -84,7 +84,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost
 ## ✅ Step 4: Test Everything
 
 ### Backend API Test
-Visit: `https://campeon-crm-api.onrender.com/docs`
+Visit: `https://api.top-bonuslab.com/docs`
 
 You should see the FastAPI Swagger documentation.
 
@@ -129,8 +129,8 @@ app.add_middleware(
 
 After deployment:
 - **Frontend**: https://campeon-crm.vercel.app
-- **Backend API**: https://campeon-crm-api.onrender.com
-- **API Docs**: https://campeon-crm-api.onrender.com/docs
+- **Backend API**: https://api.top-bonuslab.com
+- **API Docs**: https://api.top-bonuslab.com/docs
 - **Database**: top-bonuslab.com (PostgreSQL)
 
 ---

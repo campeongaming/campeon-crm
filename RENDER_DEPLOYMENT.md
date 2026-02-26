@@ -71,8 +71,8 @@ Click **"Environment"** and add:
 ### Step 4: Deploy
 1. Click **"Create Web Service"**
 2. Wait for deployment (5-10 minutes)
-3. You'll get a URL like: `https://campeon-crm-api.onrender.com`
-4. Test: Visit `https://campeon-crm-api.onrender.com/health`
+3. You'll get a URL like: `https://api.top-bonuslab.com`
+4. Test: Visit `https://api.top-bonuslab.com/health`
 
 ---
 
@@ -101,7 +101,7 @@ Click **"Environment"** and add:
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_API_URL` | `https://campeon-crm-api.onrender.com` |
+| `NEXT_PUBLIC_API_URL` | `https://api.top-bonuslab.com` |
 | `NODE_ENV` | `production` |
 
 **Important**: Use your actual backend URL from Part 2!
@@ -152,7 +152,7 @@ python -m uvicorn main:app --reload --port 8000
 ### "Connection refused" when accessing API
 - ❌ Backend might still be building
 - ✅ Wait 5-10 minutes and refresh
-- ✅ Check `https://campeon-crm-api.onrender.com/health`
+- ✅ Check `https://api.top-bonuslab.com/health`
 
 ### Database connection errors on Render
 - ❌ Wrong DATABASE_URL format
@@ -223,5 +223,5 @@ Make sure these files exist in your project:
 If you encounter issues:
 1. Check Render dashboard logs
 2. Verify environment variables
-3. Test health endpoint: `https://campeon-crm-api.onrender.com/health`
+3. Test health endpoint: `https://api.top-bonuslab.com/health`
 4. Check browser console for errors

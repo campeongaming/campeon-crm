@@ -24,7 +24,7 @@
 - [ ] Start: `cd backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000`
 - [ ] Set ENV: `DATABASE_URL=<internal-url>`
 - [ ] Wait for deployment (5-10 min)
-- [ ] Test: `https://campeon-crm-api.onrender.com/health`
+ - [ ] Test: `https://api.top-bonuslab.com/health`
 
 ### 3️⃣ Deploy Frontend
 - [ ] New Web Service → GitHub
@@ -32,7 +32,7 @@
 - [ ] Environment: Node
 - [ ] Build: `npm install && npm run build`
 - [ ] Start: `npm start`
-- [ ] Set ENV: `NEXT_PUBLIC_API_URL=https://campeon-crm-api.onrender.com`
+- [ ] Set ENV: `NEXT_PUBLIC_API_URL=https://api.top-bonuslab.com`
 - [ ] Wait for deployment (5-10 min)
 - [ ] Test: Visit frontend URL
 
@@ -47,11 +47,11 @@
 
 | Service | Type | URL Format |
 |---------|------|-----------|
-| Backend | REST API | `https://campeon-crm-api.onrender.com` |
+| Backend | REST API | `https://api.top-bonuslab.com` |
 | Frontend | Web App | `https://campeon-crm-web.onrender.com` |
 | Database | PostgreSQL | `postgresql://...` (internal) |
-| API Docs | Swagger UI | `https://campeon-crm-api.onrender.com/docs` |
-| Health Check | API | `https://campeon-crm-api.onrender.com/health` |
+| API Docs | Swagger UI | `https://api.top-bonuslab.com/docs` |
+| Health Check | API | `https://api.top-bonuslab.com/health` |
 
 ## Environment Variables Needed
 
@@ -62,7 +62,7 @@ DATABASE_URL=postgresql://campeon_user:PASSWORD@hostname:5432/campeon_crm
 
 **Frontend (.env or Render settings):**
 ```
-NEXT_PUBLIC_API_URL=https://campeon-crm-api.onrender.com
+NEXT_PUBLIC_API_URL=https://api.top-bonuslab.com
 ```
 
 ## Troubleshooting Quick Fixes

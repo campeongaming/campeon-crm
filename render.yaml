@@ -26,6 +26,6 @@ services:
       - iad
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        value: https://campeon-crm-api.onrender.com
+        value: https://api.top-bonuslab.com
       - key: NODE_ENV
         value: production
