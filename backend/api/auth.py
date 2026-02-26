@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -11,6 +12,46 @@ from database.models import User
 from api.schemas import UserLogin, UserRegister, UserResponse, TokenResponse
 
 router = APIRouter()
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def require_auth(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(
+        _bearer_scheme),
+    db: Session = Depends(get_db)
+) -> User:
+    """Dependency that requires a valid JWT Bearer token. Attach to any protected router."""
+    token: Optional[str] = None
+
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = db.query(User).filter(User.username ==
+                                 payload.get("username")).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+
+    return user
+
 
 # Get JWT secret from environment or use default for development
 SECRET_KEY = os.getenv(

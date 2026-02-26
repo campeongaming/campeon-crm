@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from api.bonus_templates import router as bonus_templates_router
 from api.stable_config import router as stable_config_router
 from api.custom_languages import router as custom_languages_router
-from api.auth import router as auth_router
+from api.auth import router as auth_router, require_auth
 from database.database import init_db
 
 
@@ -45,13 +45,15 @@ app.add_middleware(
 )
 
 # Include routers
+# auth routes are public (login, register, logout)
 app.include_router(auth_router, tags=["auth"])
+# all business routes require a valid JWT token
 app.include_router(bonus_templates_router, prefix="/api",
-                   tags=["bonus-templates"])
+                   tags=["bonus-templates"], dependencies=[Depends(require_auth)])
 app.include_router(stable_config_router, prefix="/api",
-                   tags=["stable-config"])
+                   tags=["stable-config"], dependencies=[Depends(require_auth)])
 app.include_router(custom_languages_router, prefix="/api",
-                   tags=["custom-languages"])
+                   tags=["custom-languages"], dependencies=[Depends(require_auth)])
 
 
 @app.get("/")
