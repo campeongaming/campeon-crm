@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 import jwt
 import hashlib
 import os
@@ -205,7 +205,7 @@ def admin_create_user(user: UserRegister, token: str = Query(...), db: Session =
     return new_user
 
 
-@router.get("/auth/users")
+@router.get("/auth/users", response_model=List[UserResponse])
 def list_users(token: str = Query(...), db: Session = Depends(get_db)):
     """Admin-only endpoint to list all users"""
 

@@ -8,7 +8,6 @@ import { API_ENDPOINTS } from '@/lib/api-config';
 interface User {
     id: number;
     username: string;
-    email?: string;
     role: string;
     is_active: boolean;
     created_at: string;
@@ -29,6 +28,7 @@ export default function CreateUserPage() {
     const [loading, setLoading] = useState(false);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [fetchError, setFetchError] = useState('');
 
     // Fetch users on mount
     useEffect(() => {
@@ -41,12 +41,16 @@ export default function CreateUserPage() {
             if (!token) return;
 
             setLoadingUsers(true);
+            setFetchError('');
             const response = await axios.get(
                 `${API_ENDPOINTS.BASE_URL}/auth/users`,
                 { params: { token } }
             );
             setUsers(response.data);
-        } catch (error) {
+        } catch (error: any) {
+            const errMsg = error.response?.data?.detail || error.message || 'Unknown error';
+            const status = error.response?.status;
+            setFetchError(`Failed to load users (${status ?? 'network error'}): ${errMsg}`);
             console.error('Failed to fetch users:', error);
         } finally {
             setLoadingUsers(false);
@@ -270,6 +274,8 @@ export default function CreateUserPage() {
 
                     {loadingUsers ? (
                         <div className="text-center text-gray-400">Loading users...</div>
+                    ) : fetchError ? (
+                        <div className="text-center text-red-400 text-sm">{fetchError}</div>
                     ) : users.length === 0 ? (
                         <div className="text-center text-gray-400">No users found</div>
                     ) : (

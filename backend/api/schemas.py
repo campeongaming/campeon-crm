@@ -163,14 +163,12 @@ class UserRegister(BaseModel):
     username: str
     password: str
     role: Optional[str] = None
-    email: Optional[str] = None
 
 
 class UserResponse(BaseModel):
     """Schema for user response"""
     id: int
     username: str
-    email: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime
