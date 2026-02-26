@@ -42,7 +42,7 @@ export default function CreateUserPage() {
 
             setLoadingUsers(true);
             const response = await axios.get(
-                `${API_ENDPOINTS.BASE_URL}/auth/users`,
+                `${API_ENDPOINTS.BASE_URL}/api/auth/users`,
                 { params: { token } }
             );
             setUsers(response.data);
@@ -87,7 +87,7 @@ export default function CreateUserPage() {
             }
 
             const response = await axios.post(
-                `${API_ENDPOINTS.BASE_URL}/auth/admin/create-user`,
+                `${API_ENDPOINTS.BASE_URL}/api/auth/admin/create-user`,
                 {
                     username: formData.username,
                     password: formData.password,
@@ -132,7 +132,7 @@ export default function CreateUserPage() {
 
             setDeletingId(userId);
             await axios.delete(
-                `${API_ENDPOINTS.BASE_URL}/auth/users/${userId}`,
+                `${API_ENDPOINTS.BASE_URL}/api/auth/users/${userId}`,
                 { params: { token } }
             );
 

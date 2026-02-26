@@ -45,7 +45,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(auth_router, tags=["auth"])
+app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(bonus_templates_router, prefix="/api",
                    tags=["bonus-templates"])
 app.include_router(stable_config_router, prefix="/api",
