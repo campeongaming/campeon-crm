@@ -17,23 +17,12 @@ export default function Icon() {
                     width: 64,
                     height: 64,
                     borderRadius: 16,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    background: 'transparent',
+                    backgroundImage: `url(${base64})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
                 }}
-            >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src={base64}
-                    width={64}
-                    height={64}
-                    alt=""
-                    style={{ borderRadius: 16 }}
-                />
-            </div>
+            />
         ),
-        {
-            ...size,
-        }
+        { ...size }
     );
 }
