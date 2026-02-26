@@ -1,7 +1,6 @@
 {
     "name": "campeon-crm",
     "version": "1.0.0",
-    "description": "Collaborative Casino CRM with offer management and translations",
     "scripts": {
         "dev": "next dev",
         "build": "next build",

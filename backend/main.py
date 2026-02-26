@@ -23,7 +23,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="CAMPEON CRM API",
-    description="Collaborative offer management system",
     version="1.0.0",
     lifespan=lifespan
 )
