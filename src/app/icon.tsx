@@ -6,9 +6,9 @@ export const size = { width: 32, height: 32 };
 export const contentType = 'image/png';
 
 export default function Icon() {
-    const imgPath = path.join(process.cwd(), 'public', 'bonuslab-icon.png');
+    const imgPath = path.join(process.cwd(), 'public', 'bonuslab-icon.jpg');
     const imgData = readFileSync(imgPath);
-    const base64 = `data:image/png;base64,${imgData.toString('base64')}`;
+    const base64 = `data:image/jpeg;base64,${imgData.toString('base64')}`;
 
     return new ImageResponse(
         (
